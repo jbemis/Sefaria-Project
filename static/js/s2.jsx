@@ -7446,7 +7446,9 @@ var TestMessage = React.createClass({
 
 var Footer = React.createClass({
   render: function(){
+    /* there is a bug here, seems to get the currentPath of the last page... */
     var currentPath = Sefaria.util.currentPath();
+    /*console.log("Footer current path: ",currentPath, "window ", window.location.href);*/
     var next = encodeURIComponent(currentPath);
     return (
         <div id="footerInner">

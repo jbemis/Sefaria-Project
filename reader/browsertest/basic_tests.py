@@ -1,4 +1,5 @@
 from framework import AtomicTest
+from framework.config import *
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support.expected_conditions import title_contains, staleness_of, element_to_be_clickable, visibility_of_element_located, invisibility_of_element_located
@@ -6,7 +7,7 @@ from selenium.webdriver.support.expected_conditions import title_contains, stale
 from sefaria.model import *
 from selenium.webdriver.common.keys import Keys
 
-TEMPER = 10
+
 
 
 class SinglePanelOnMobile(AtomicTest):
@@ -60,16 +61,16 @@ class LoadRefAndOpenLexicon(AtomicTest):
     single_panel = False
 
     def run(self):
-        load_ref =  Ref("Numbers 25")
+        print TEMPER
         click_ref = Ref("Numbers 25.5")
-        self.load_ref(load_ref, lang="he").click_segment(click_ref)
+        self.load_ref(click_ref, lang="he").click_segment(click_ref)
         assert "Numbers.25.5" in self.driver.current_url, self.driver.current_url
         assert "with=all" in self.driver.current_url, self.driver.current_url
-        """selector = '.segment[data-ref="{}"]'.format(click_ref.normal())
-        self.driver.execute_script(
+        """self.driver.execute_script(
             "var range = document.createRange();" +
             "var start = document.querySelectorAll('[data-ref=\"Numbers 25:5\"]');" +
-            "var textNode = start.querySelectorAll('span.he')[0].firstChild;" +
+            "console.log(start);" +
+            "var textNode = start.getElementsByTagName('span')[0].firstChild;" +
             "range.setStart(textNode, 0);" +
             "range.setEnd(textNode, 5);" +
             "window.getSelection().addRange(range);"

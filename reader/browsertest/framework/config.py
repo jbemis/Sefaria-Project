@@ -98,3 +98,9 @@ SAUCE_CAPS = SAUCE_CORE_CAPS + SAUCE_EXTENDED_CAPS
     {'browserName': 'android', 'platform': 'ANDROID', 'device': 'Amazon Kindle Fire HD 8.9'},
     {'browserName': 'iPad', 'platform': 'MAC', 'device': 'iPad Mini 2'}
 """
+
+try:
+    from local_config import *
+except ImportError:
+    print "No local reader test config"
+    pass

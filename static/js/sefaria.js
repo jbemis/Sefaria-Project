@@ -265,7 +265,6 @@ Sefaria = extend(Sefaria, {
   },
   _saveText: function(data, settings, skipWrap) {
     if (!data || "error" in data) { 
-      console.log("Returning!");
       return;
     }
     settings         = settings || {};
@@ -440,16 +439,18 @@ Sefaria = extend(Sefaria, {
       // TODO handle ranging refs, which requires knowledge of the segment count of each included section
       // i.e., in "Shabbat 2a:5-2b:8" what is the last segment of Shabbat 2a?
       // For now, just return the first non-spanning ref.
-      oref.toSections = oref.sections;
-      return [this.humanRef(this.makeRef(oref))];
+      var newRef = Sefaria.util.clone(oref);
+      newRef.toSections = newRef.sections;
+      return [this.humanRef(this.makeRef(newRef))];
     } else {
       var refs  = [];
       var start = oref.sections[oref.sections.length-1];
       var end   = oref.toSections[oref.sections.length-1];
       for (var i = start; i <= end; i++) {
-        oref.sections[oref.sections.length-1]   = i;
-        oref.toSections[oref.sections.length-1] = i;
-        refs.push(this.humanRef(this.makeRef(oref)));
+        newRef = Sefaria.util.clone(oref);
+        newRef.sections[oref.sections.length-1] = i;
+        newRef.toSections[oref.sections.length-1] = i;
+        refs.push(this.humanRef(this.makeRef(newRef)));
       }
       return refs;
     }
@@ -477,7 +478,7 @@ Sefaria = extend(Sefaria, {
       //console.log(url);
       this._api(url, function(data) {
         this._lexiconLookups[cache_key] = ("error" in data) ? [] : data;
-        console.log("state changed from ajax: ", data);
+        //console.log("state changed from ajax: ", data);
         cb(this._lexiconLookups[cache_key]);
       }.bind(this));
     }else{
@@ -795,6 +796,7 @@ Sefaria = extend(Sefaria, {
           if ("error" in data) { 
             return;
           }
+          var originalData = Sefaria.util.clone(data);
 
           // Save link, note, and sheet data, and retain the split data from each of these saves
           var split_data = {
@@ -815,11 +817,13 @@ Sefaria = extend(Sefaria, {
             }
           }, this);
 
+
            // Save the original data after the split data - lest a split version overwrite it.
-          this._related[ref] = data;
+          this._related[ref] = originalData;
           this._relatedSummaries[ref] = null; // Reset in case previously cached before API returned
 
           callback(data);
+
         }.bind(this));
     }
   },

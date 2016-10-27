@@ -32,7 +32,7 @@ for trg in targums:
         for b in base_books:
             bidx = library.get_index(b)
             trg.related_categories = [c for c in bidx.categories if c not in trg.categories]
-    trg.save()
+    trg.save(override_dependencies=True)
 
 for com2 in commentary2:
     print com2.title
@@ -55,7 +55,7 @@ for com2 in commentary2:
             o_cats = [c for c in bidx.categories if c not in com2.categories and c not in other_categories]
             other_categories += o_cats
         com2.related_categories = other_categories
-    com2.save()
+    com2.save(override_dependencies=True)
 
     if not Term().load({"name": com2.collective_title}):
         term = Term({"name": com2.collective_title, 'scheme': 'commentary_titles'})

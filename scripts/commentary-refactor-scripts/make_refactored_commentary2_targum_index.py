@@ -42,6 +42,8 @@ for com2 in commentary2:
             base_books = [library.get_index(on_title).title]
         except Exception as e:
             base_books = [t for t in library.get_indexes_in_category(on_title)]
+    else:
+        base_books = []
 
     com2.categories = [com2.categories[1], 'Commentary'] + com2.categories[2:]
     com2.dependence = 'Commentary'

@@ -34,6 +34,23 @@ for trg in targums:
             trg.related_categories = [c for c in bidx.categories if c not in trg.categories]
     trg.save(override_dependencies=True)
 
+base_text_mappings = {
+    'Shney Luchot HaBrit' : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    'Meshech Hochma' : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    'Siftei Hakhamim' : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    'Ralbag Esther': ["Esther"],
+    'Chizkuni': ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    'Lev Sameach' : ["Sefer HaMitzvot LaRambam"],
+    'Penei David' : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    'Ralbag Song of Songs' : ['Song of Songs'],
+    'Rabbeinu Bahya' : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    "Ralbag Ruth" : ["Ruth"],
+    "Kinaat Sofrim al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
+    "Marganita Tava al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
+    "Megilat Esther al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
+    "Rambam Introduction to Masechet Horayot" : ["Mishnah Horayot"]
+}
+
 for com2 in commentary2:
     print com2.title
     if ' on ' in com2.title:
@@ -42,6 +59,13 @@ for com2 in commentary2:
             base_books = [library.get_index(on_title).title]
         except Exception as e:
             base_books = [t for t in library.get_indexes_in_category(on_title)]
+    elif com2.title in base_text_mappings:
+        base_books = []
+        for i in base_text_mappings[com2.title]:
+            try:
+                base_books.append(library.get_index(i).title)
+            except Exception as ex:
+                pass
     else:
         base_books = []
 

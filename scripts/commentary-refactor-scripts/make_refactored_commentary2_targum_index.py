@@ -2,16 +2,18 @@
 # -*- coding: utf-8 -*-
 
 from sefaria.model import *
-from sefaria.utils.hebrew import hebrew_term
+from sefaria.utils.hebrew import hebrew_term, is_hebrew
 import re
 
 
 commentary2 = IndexSet({"categories.0": "Commentary2"})
 targums = IndexSet({"categories.1": "Targum"})
 
-targum_collective_titles = [('Aramaic Targum', 'to '),
-                            ('Targum Jonathan', 'on '),
-                            ('Onkelos', ''),
+### ---------------------------- Targum ----------------------------------------------- #####
+
+targum_collective_titles = [('Aramaic Targum', 'to ', u'תרגום'),
+                            ('Targum Jonathan', 'on ', u'תרגום יונתן'),
+                            ('Onkelos', '', u'תרגום אונקלוס'),
                             ('Targum Neofiti', None),
                             ('Targum Jerusalem', None),
                             ('Tafsir Rasag', None)]
@@ -33,6 +35,25 @@ for trg in targums:
             bidx = library.get_index(b)
             trg.related_categories = [c for c in bidx.categories if c not in trg.categories]
     trg.save(override_dependencies=True)
+    if not Term().load({"name": trg.collective_title}):
+        term = Term({"name": trg.collective_title, 'scheme': 'targum_titles'})
+        he_collective_title = t[2] if len(t) >=2 else trg.get_title('he')
+        titles = [
+            {
+                "lang": "en",
+                "text": trg.collective_title,
+                "primary": True
+            },
+            {
+                "lang": "he",
+                "text": he_collective_title,
+                "primary": True
+            }
+        ]
+        term.set_titles(titles)
+        term.save()
+
+### ---------------------------- Commentary 2 ----------------------------------------------- #####
 
 base_text_mappings = {
     'Shney Luchot HaBrit' : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
@@ -45,6 +66,7 @@ base_text_mappings = {
     'Ralbag Song of Songs' : ['Song of Songs'],
     'Rabbeinu Bahya' : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
     "Ralbag Ruth" : ["Ruth"],
+    "Eben Ezra on Lamentations" : ["Lamentations"],
     "Kinaat Sofrim al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
     "Marganita Tava al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
     "Megilat Esther al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
@@ -71,7 +93,7 @@ for com2 in commentary2:
 
     com2.categories = [com2.categories[1], 'Commentary'] + com2.categories[2:]
     com2.dependence = 'Commentary'
-    com2.collective_title = com2.categories[-1]
+    com2.collective_title = com2.categories[2]
     com2.auto_linking_scheme = None
     if len(base_books):
         com2.base_text_titles = base_books
@@ -84,6 +106,9 @@ for com2 in commentary2:
     com2.save(override_dependencies=True)
 
     if not Term().load({"name": com2.collective_title}):
+        he_collective_title = hebrew_term(com2.collective_title)
+        if not he_collective_title or not is_hebrew(he_collective_title):
+            he_collective_title = com2.get_title("he").split(u" על ")[0]
         term = Term({"name": com2.collective_title, 'scheme': 'commentary_titles'})
         titles = [
             {
@@ -93,7 +118,7 @@ for com2 in commentary2:
             },
             {
                 "lang": "he",
-                "text": hebrew_term(com2.collective_title),
+                "text": he_collective_title,
                 "primary": True
             }
         ]

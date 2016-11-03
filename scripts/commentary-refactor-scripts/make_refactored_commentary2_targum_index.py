@@ -21,11 +21,13 @@ for trg in targums:
     print trg.title
     for t in targum_collective_titles:
         if t[0] in trg.title:
-            collective_title = t[0]
-            if t[1] is not None:
-                base_books = [trg.title.replace(t[0]+' '+t[1], '')]
+            tup = t
+            collective_title = tup[0]
+            if tup[1] is not None:
+                base_books = [trg.title.replace(tup[0]+' '+tup[1], '')]
             else:
                 base_books = ['Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy']
+            break
     trg.dependence = 'Targum'
     trg.collective_title = collective_title
     trg.auto_linking_scheme = 'match_base_text_depth'
@@ -37,7 +39,10 @@ for trg in targums:
     trg.save(override_dependencies=True)
     if not Term().load({"name": trg.collective_title}):
         term = Term({"name": trg.collective_title, 'scheme': 'targum_titles'})
-        he_collective_title = t[2] if len(t) >=2 else trg.get_title('he')
+        if len(tup) >= 2:
+            he_collective_title = tup[2]
+        else
+            he_collective_title = trg.get_title('he')
         titles = [
             {
                 "lang": "en",

@@ -39,7 +39,7 @@ for trg in targums:
     trg.save(override_dependencies=True)
     if not Term().load({"name": trg.collective_title}):
         term = Term({"name": trg.collective_title, 'scheme': 'targum_titles'})
-        if len(tup) >= 2:
+        if len(tup) == 3:
             he_collective_title = tup[2]
         else:
             he_collective_title = trg.get_title('he')

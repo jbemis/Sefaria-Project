@@ -41,7 +41,7 @@ for trg in targums:
         term = Term({"name": trg.collective_title, 'scheme': 'targum_titles'})
         if len(tup) >= 2:
             he_collective_title = tup[2]
-        else
+        else:
             he_collective_title = trg.get_title('he')
         titles = [
             {

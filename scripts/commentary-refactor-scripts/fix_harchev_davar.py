@@ -10,7 +10,7 @@ for idx in harchevs:
     base_book = idx.title.replace(work_title+" on ", '')
     idx.dependence = 'commentary'
     idx.work_title = work_title
-    idx.mapping_scheme = None
+    idx.base_text_mapping = None
     bidx = library.get_index(base_book)
     idx.base_text_titles = [base_book]
     idx.related_categories = [c for c in bidx.categories if c not in idx.categories]

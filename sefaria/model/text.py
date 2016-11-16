@@ -207,7 +207,7 @@ class Index(abst.AbstractMongoRecord, AbstractIndex):
         #commentary-refactor attributes
         "dependence", #commentary: to denote commentaries and other potential not standalone texts
         "base_text_titles", #the base book(s) this one is dpenedant on
-        "mapping_scheme",
+        "base_text_mapping",
         "collective_title",
         "related_categories"
     ]

@@ -39,6 +39,7 @@ for trg in targums:
             trg.related_categories += [c for c in bidx.categories if c not in trg.categories and c not in trg.related_categories]
         if len(base_books) == 1:
             trg.categories += trg.related_categories
+    trg.categories.insert(2, trg.collective_title)
     trg.save(override_dependencies=True)
     if not Term().load({"name": trg.collective_title}):
         term = Term({"name": trg.collective_title, 'scheme': 'targum_titles'})

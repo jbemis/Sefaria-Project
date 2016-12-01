@@ -5,7 +5,7 @@ from sefaria.model import *
 rifs = IndexSet({"title": {"$regex": "^Rif"}})
 for idx in rifs:
     print idx.title
-    idx.categories.insert(1, "Commentary")
+    idx.categories.insert(2, "Commentary")
     base_book = idx.title.replace("Rif ", '').strip()
     idx.dependence = 'Commentary'
     idx.work_title = "Rif"

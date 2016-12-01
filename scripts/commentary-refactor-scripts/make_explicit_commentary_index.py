@@ -17,7 +17,7 @@ def make_explicit_commentary_index(title):
     other_categories = [c for c in idx.b_index.categories if c not in idx.categories]
     new_idx = {
         'title': idx.title,
-        'categories': [idx.categories[1], idx.categories[0]] + idx.categories[2:],  # the same as the display order
+        'categories': [idx.categories[1], idx.categories[0]] + idx.categories[2:] + other_categories,  # the same as the display order
         'schema': idx.schema,
         'dependence' : 'Commentary',
         'authors' : getattr(idx, "authors", None),

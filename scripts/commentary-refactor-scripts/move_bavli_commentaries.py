@@ -8,5 +8,6 @@ import re
 talmud_commentaries = IndexSet({'dependence': 'Commentary', 'categories.0': 'Talmud'})
 for idx in talmud_commentaries:
     print idx.title
-    idx.categories = [idx.categories[0], 'Bavli'] + idx.categories[1:]
+    idx.categories.remove('Bavli')
+    idx.categories.insert(1, 'Bavli')
     idx.save(override_dependencies=True)

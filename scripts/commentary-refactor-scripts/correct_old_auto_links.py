@@ -67,13 +67,13 @@ def correct_commentary_links(oref, text=None, **kwargs):
                     if getattr(link, 'type', '') != 'commentary':
                         fixed = True
                         link.type = 'commentary'
-                    if getattr(link, 'generated_by', '') != "add_commentary_links":
+                    if getattr(link, 'generated_by', '') != "CommentaryAutoLinker":
                         fixed = True
-                        link.generated_by = "add_commentary_links"
+                        link.generated_by = "CommentaryAutoLinker"
                     if fixed:
                         fixed_links += [tref]
                     try:
-                        link.save()
+                        link.save(override_dependencies=True)
                     except DuplicateRecordError as e:
                         pass
     return fixed_links

@@ -8,7 +8,7 @@ import re
 talmud_commentaries = IndexSet({'dependence': 'Commentary', 'categories.0': 'Talmud'})
 for idx in talmud_commentaries:
     print idx.title
-    if "Bavli" in idx.categories:
+    if "Bavli" in idx.categories and idx.categories.index('Bavli') != 1:
         idx.categories.remove('Bavli')
     else:
         print "No Bavli"

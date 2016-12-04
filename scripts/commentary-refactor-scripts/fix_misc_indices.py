@@ -16,3 +16,11 @@ for idx in rifs:
     idx.categories = categories + related_categories
     idx.save(override_dependencies=True)
 
+print "Adding Yachin to Boaz base_text_titles"
+boazs = IndexSet({"title": {"$regex": "^Boaz on"}})
+for idx in boazs:
+    new_base_text = idx.title.replace("Boaz", "Yachin")
+    print "{}=>{}".format(idx.title, new_base_text)
+    if new_base_text not in idx.base_text_titles:
+        idx.base_text_titles.append(new_base_text)
+        idx.save(override_dependencies=True)

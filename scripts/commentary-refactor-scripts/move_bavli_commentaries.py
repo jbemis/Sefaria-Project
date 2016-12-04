@@ -8,9 +8,9 @@ import re
 talmud_commentaries = IndexSet({'dependence': 'Commentary', 'categories.0': 'Talmud'})
 for idx in talmud_commentaries:
     print idx.title
-    if "Bavli" in idx.categories and idx.categories.index('Bavli') != 1:
+    if "Bavli" in idx.categories and idx.categories.index('Bavli') == 1:
+        continue
+    elif "Bavli" in idx.categories:
         idx.categories.remove('Bavli')
-    else:
-        print "No Bavli"
     idx.categories.insert(1, 'Bavli')
     idx.save(override_dependencies=True)

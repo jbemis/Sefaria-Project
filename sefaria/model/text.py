@@ -1383,24 +1383,52 @@ class TextChunk(AbstractTextRecord):
         else:
             raise Exception("Called TextChunk.version() on merged TextChunk.")
 
-    def text_index_map(self,tokenizer):
+    def text_index_map(self,tokenizer=lambda x: re.split(u'\s+',x), strict=True):
         """
         Primarily used for depth-2 texts in order to get index/ref pairs relative to the full text string
          indexes are the word index in word_list
 
         tokenizer: f(str)->list(str) - function to split up text
+        strict: if True, throws error if len(ind_list) != len(ref_list). o/w truncates longer array to length of shorter
         :return: (list,list,list) - index_list, ref_list, word_list
         """
+        #TODO there is a known error that this will fail if the text version you're using has fewer segments than the VersionState.
         ind_list = []
-        ref_list = self._oref.all_subrefs()
+        r = self._oref
+
+        if r.is_range():
+            input_refs = r.range_list()
+        else:
+            input_refs = [r]
+
+        ref_list = []
+        for temp_ref in input_refs:
+            if temp_ref.is_segment_level():
+                ref_list.append(temp_ref)
+            elif temp_ref.is_section_level():
+                ref_list += temp_ref.all_subrefs()
+            else: #you're higher than section level
+                sub_ja = temp_ref.get_state_ja().subarray_with_ref(temp_ref)
+                ref_list_sections = [temp_ref.subref([i + 1 for i in k ]) for k in sub_ja.non_empty_sections() ]
+                ref_list += [ref_seg for ref_sec in ref_list_sections for ref_seg in ref_sec.all_subrefs()]
+
+
 
         total_len = 0
-        for i,segment in enumerate(self.text):
+        text_list = self.ja().flatten_to_array()
+        for i,segment in enumerate(text_list):
             ind_list.append(total_len)
             total_len += len(tokenizer(segment))
 
         if len(ind_list) != len(ref_list):
-            raise ValueError("There are more Refs than segments for this TextChunk")
+            if strict:
+                raise ValueError("The number of refs doesn't match the number of starting words. len(refs)={} len(inds)={}".format(len(ref_list),len(ind_list)))
+            else:
+                print "Warning: The number of refs doesn't match the number of starting words. len(refs)={} len(inds)={}".format(len(ref_list),len(ind_list))
+                if len(ind_list) > len(ref_list):
+                    ind_list = ind_list[:len(ref_list)]
+                else:
+                    ref_list = ref_list[:len(ind_list)]
 
         return ind_list,ref_list
 
@@ -2089,7 +2117,7 @@ class Ref(object):
         self.toSections = [int(x) for x in self.toSections]
 
     def __eq__(self, other):
-        return self.uid() == other.uid()
+        return isinstance(other, Ref) and self.uid() == other.uid()
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -2790,6 +2818,7 @@ class Ref(object):
 
         :return: List of :class:`Ref`
         """
+        # TODO this function should take Version as optional parameter to limit the refs it returns to ones existing in that Version
         assert not self.is_range(), "Ref.all_subrefs() is not intended for use on Ranges"
 
         size = self.get_state_ja().sub_array_length([i - 1 for i in self.sections])
@@ -3525,6 +3554,30 @@ class Ref(object):
         return LinkSet(self)
 
 
+    def distance(self, ref, max_dist=None):
+        """
+
+        :param ref: ref which you want to compare distance with
+        :param max_dist: maximum distance beyond which the function will return -1. it's suggested you set this param b/c alternative is very slow
+        :return: int: num refs between self and ref. -1 if self and ref aren't in the same index
+        """
+        if self.index_node != ref.index_node:
+            return -1
+
+        # convert to base 0
+        sec1 = self.sections[:]
+        sec2 = ref.sections[:]
+        for i in xrange(len(sec1)):
+            sec1[i] -= 1
+        for i in xrange(len(sec2)):
+            sec2[i] -= 1
+
+        distance = self.get_state_ja().distance(sec1,sec2)
+        if max_dist and distance > max_dist:
+            return -1
+        else:
+            return distance
+
 class Library(object):
     """
     Operates as a singleton, through the instance called ``library``.
@@ -4195,6 +4248,8 @@ class Library(object):
         if lang is None:
             lang = "he" if is_hebrew(st) else "en"
         if lang == "he":
+            from sefaria.utils.hebrew import strip_nikkud
+            st = strip_nikkud(st)
             unique_titles = {title: 1 for title in self.get_titles_in_string(st, lang)}
             for title in unique_titles.iterkeys():
                 try:

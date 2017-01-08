@@ -332,6 +332,7 @@ var ReaderApp = React.createClass({
           (prev.menuOpen !== next.menuOpen) ||
           (prev.menuOpen === "book toc" && prev.bookRef !== next.bookRef) ||
           (next.mode === "Text" && prev.refs.slice(-1)[0] !== next.refs.slice(-1)[0]) || 
+          (next.mode === "Text" && !prev.highlightedRefs.compare(next.highlightedRefs)) || 
           (next.mode === "TextAndConnections" && prev.highlightedRefs.slice(-1)[0] !== next.highlightedRefs.slice(-1)[0]) || 
           ((next.mode === "Connections" || next.mode === "TextAndConnections") && prev.filter && !prev.filter.compare(next.filter)) ||
           (next.mode === "Connections" && !prev.refs.compare(next.refs)) ||
@@ -465,19 +466,19 @@ var ReaderApp = React.createClass({
             break;
         }
       } else if (state.mode === "Text") {
-        hist.title    = state.refs.slice(-1)[0];
+        hist.title    = state.highlightedRefs.length ? Sefaria.normRefList(state.highlightedRefs) : state.refs.slice(-1)[0];
         hist.url      = Sefaria.normRef(hist.title);
         hist.version  = state.version;
         hist.versionLanguage = state.versionLanguage;
         hist.mode     = "Text"
       } else if (state.mode === "Connections") {
-        var ref       = state.refs.slice(-1)[0];
+        var ref       = Sefaria.normRefList(state.refs);
         hist.sources  = state.filter.length ? state.filter.join("+") : "all";
         hist.title    = ref  + " with " + (hist.sources === "all" ? "Connections" : hist.sources);
         hist.url      = Sefaria.normRef(ref); // + "?with=" + sources;
         hist.mode     = "Connections"
       } else if (state.mode === "TextAndConnections") {
-        var ref       = state.highlightedRefs.slice(-1)[0];
+        var ref       = Sefaria.normRefList(state.highlightedRefs);
         hist.sources  = state.filter.length ? state.filter[0] : "all";
         hist.title    = ref  + " with " + (hist.sources === "all" ? "Connections" : hist.sources);
         hist.url      = Sefaria.normRef(ref); // + "?with=" + sources;
@@ -609,7 +610,7 @@ var ReaderApp = React.createClass({
       version:              state.version              || null,
       versionLanguage:      state.versionLanguage      || null,
       highlightedRefs:      state.highlightedRefs      || [],
-      recentFilters:        state.filter               || [],
+      recentFilters:        state.recentFilters        || state.filter || [],
       menuOpen:             state.menuOpen             || null, // "navigation", "text toc", "display", "search", "sheets", "home", "book toc"
       navigationCategories: state.navigationCategories || [],
       navigationSheetTag:   state.sheetsTag            || null,
@@ -924,12 +925,17 @@ var ReaderApp = React.createClass({
       this.openTextListAt(n+1, refs);
     }
   },
-  setConnectionsFilter: function(n, filter) {
+  setConnectionsFilter: function(n, filter, updateRecent) {
     // Set the filter for connections panel at `n`, carry data onto the panel's basetext as well.
     var connectionsPanel = this.state.panels[n];
     var basePanel        = this.state.panels[n-1];
     if (filter) {
-      connectionsPanel.recentFilters.push(filter);
+      if (updateRecent) {
+        if (Sefaria.util.inArray(filter, connectionsPanel.recentFilters) !== -1) {
+            connectionsPanel.recentFilters.toggle(filter);
+          }
+        connectionsPanel.recentFilters = [filter].concat(connectionsPanel.recentFilters);
+      }
       connectionsPanel.filter = [filter];
     } else {
       connectionsPanel.filter = [];
@@ -1721,7 +1727,7 @@ var ReaderPanel = React.createClass({
     // Sets the current filter for Connected Texts (TextList)
     // If updateRecent is true, include the current setting in the list of recent filters.
     if (this.props.setConnectionsFilter) {
-      this.props.setConnectionsFilter(filter);
+      this.props.setConnectionsFilter(filter, updateRecent);
     } else {
       if (updateRecent && filter) {
         if (Sefaria.util.inArray(filter, this.state.recentFilters) !== -1) {
@@ -1793,7 +1799,7 @@ var ReaderPanel = React.createClass({
       "Add Note": 1,
       "My Notes": 1,
       "Add Connection": 1,
-      "Add Translation": 1 // Is this used?
+      "Add Translation": 1
     };
     Sefaria.site.track.event("Tools", mode + " Click");
     if (!Sefaria._uid && mode in loginRequired) {
@@ -2669,9 +2675,10 @@ var LanguageToggleButton = React.createClass({
 
 var BlockLink = React.createClass({
   propTypes: {
-    title:    React.PropTypes.string,
-    heTitle:  React.PropTypes.string,
-    target:   React.PropTypes.string,
+    title:         React.PropTypes.string,
+    heTitle:       React.PropTypes.string,
+    target:        React.PropTypes.string,
+    image:         React.PropTypes.string,
     interfaceLink: React.PropTypes.bool
   },
   getDefaultProps: function() {
@@ -2682,6 +2689,7 @@ var BlockLink = React.createClass({
   render: function() {
     var interfaceClass = this.props.interfaceLink ? 'int-' : '';
     return (<a className="blockLink" href={this.props.target}>
+              {this.props.image ? <img src={this.props.image} /> : null}
               <span className={`${interfaceClass}en`}>{this.props.title}</span>
               <span className={`${interfaceClass}he`}>{this.props.heTitle}</span>
            </a>);
@@ -2758,7 +2766,7 @@ var ReaderNavigationCategoryMenu = React.createClass({
                       <span className="he">{Sefaria.hebrewCategory(this.props.category)}</span>
                     </h1>) : null}
                   {toggle}
-                  <ReaderNavigationCategoryMenuContents contents={catContents} categories={categories} width={this.props.width} />
+                  <ReaderNavigationCategoryMenuContents contents={catContents} categories={categories} width={this.props.width} category={this.props.category} />
                 </div>
                 {footer}
               </div>
@@ -2770,9 +2778,32 @@ var ReaderNavigationCategoryMenu = React.createClass({
 var ReaderNavigationCategoryMenuContents = React.createClass({
   // Inner content of Category menu (just category title and boxes of)
   propTypes: {
+    category:   React.PropTypes.string.isRequired,
     contents:   React.PropTypes.array.isRequired,
     categories: React.PropTypes.array.isRequired,
     width:      React.PropTypes.number
+  },
+
+  getRenderedTextTitleString: function(title, heTitle){
+    var whiteList = ['Midrash Mishlei', 'Midrash Tehillim', 'Midrash Tanchuma'];
+    var displayCategory = this.props.category;
+    var displayHeCategory = Sefaria.hebrewCategory(this.props.category);
+    if (whiteList.indexOf(title) == -1){
+      var replaceTitles = {
+        "en": ['Jerusalem Talmud', displayCategory],
+        "he": ['תלמוד ירושלמי', displayHeCategory]
+      };
+      var replaceOther = {
+        "en" : [", ", " on "],
+        "he" : [", ", " על "]
+      };
+      //this will replace a categroy name at the beginning of the title string and any connector strings (0 or 1) that follow.
+      var titleRe = new RegExp(`^(${replaceTitles['en'].join("|")})(${replaceOther['en'].join("|")})?`);
+      var heTitleRe = new RegExp(`^(${replaceTitles['he'].join("|")})(${replaceOther['he'].join("|")})?`);
+      title   = title == displayCategory ? title : title.replace(titleRe, "");
+      heTitle = heTitle == displayHeCategory ? heTitle : heTitle.replace(heTitleRe, "");
+    }
+    return [title, heTitle];
   },
   render: function() {
       var content = [];
@@ -2800,12 +2831,11 @@ var ReaderNavigationCategoryMenuContents = React.createClass({
                             <span className='en'>{item.category}</span>
                             <span className='he'>{item.heCategory}</span>
                           </h3>
-                          <ReaderNavigationCategoryMenuContents contents={item.contents} categories={newCats} width={this.props.width} />
+                          <ReaderNavigationCategoryMenuContents contents={item.contents} categories={newCats} width={this.props.width} category={this.props.category}  />
                         </div>));
         } else {
-          // Add a Text
-          var title   = item.title.replace(/(Mishneh Torah,|Shulchan Arukh,|Jerusalem Talmud) /, "");
-          var heTitle = item.heTitle.replace(/(משנה תורה,|תלמוד ירושלמי) /, "");
+          //Add a Text
+          var [title, heTitle] = this.getRenderedTextTitleString(item.title, item.heTitle);
           var url     = "/" + Sefaria.normRef(item.firstSection);
           content.push((<a href={url}>
                           <span className={'refLink sparse' + item.sparseness} data-ref={item.firstSection} key={i}>
@@ -3019,11 +3049,13 @@ var ReaderTextTableOfContents = React.createClass({
   isTextToc: function() {
     return (this.props.mode == "text toc")
   },
-  isVersionPublicDomain: v => !(v.license && v.license.startsWith("Copyright")),
+  isVersionPublicDomain: function(v) {
+    return !(v.license && v.license.startsWith("Copyright"));
+  },
   render: function() {
     var tocHtml = Sefaria.textTocHtml(this.props.title);
 
-    tocHtml = tocHtml || '<div class="loadingMessage"><span class="int-en">Loading...</span><span class="int-he">טוען...</span></div>';
+    tocHtml = tocHtml || <LoadingMessage />;
 
     var title     = this.props.title;
     var heTitle   = Sefaria.index(title) ? Sefaria.index(title).heTitle : title;
@@ -3197,9 +3229,9 @@ var ReaderTextTableOfContents = React.createClass({
                   </div>
                   {this.isTextToc()?
                     <div className="currentVersionBox">
-                        {(!this.state.versionsLoaded) ? (<span>Loading...</span>): ""}
-                        {(this.state.versionsLoaded)? currentVersionElement: ""}
-                        {(this.state.versionsLoaded && this.state.versions.length > 1) ? selectElement: ""}
+                        {(!this.state.versionsLoaded) ? (<LoadingMessage />): null}
+                        {(this.state.versionsLoaded)? currentVersionElement: null}
+                        {(this.state.versionsLoaded && this.state.versions.length > 1) ? selectElement: null}
                     </div>
                   : null}
                   {moderatorSection}
@@ -3225,7 +3257,7 @@ var VersionBlock = React.createClass({
     return {
       ref: "",
       showHistory: false,
-      showNotes: false
+      showNotes: true
     }
   },
   getInitialState: function() {
@@ -3249,7 +3281,8 @@ var VersionBlock = React.createClass({
     "Public Domain": "http://en.wikipedia.org/wiki/Public_domain",
     "CC0": "http://creativecommons.org/publicdomain/zero/1.0/",
     "CC-BY": "http://creativecommons.org/licenses/by/3.0/",
-    "CC-BY-SA": "http://creativecommons.org/licenses/by-sa/3.0/"
+    "CC-BY-SA": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "CC-BY-NC": "https://creativecommons.org/licenses/by-nc/4.0/"
   },
   onLicenseChange: function(event) {
     this.setState({license: event.target.value, "error": null});
@@ -5377,14 +5410,11 @@ var TextList = React.createClass({
     var sectionRef         = this.getSectionRef();
     var isSingleCommentary = (filter.length == 1 && Sefaria.index(filter[0]) && Sefaria.index(filter[0]).categories == "Commentary");
 
-    //if (summary.length && !links.length) { debugger; }
     var en = "No connections known" + (filter.length ? " for " + filter.join(", ") : "") + ".";
     var he = "אין קשרים ידועים"       + (filter.length ? " ל"    + filter.join(", ") : "") + ".";
     var loaded  = Sefaria.linksLoaded(sectionRef);
-    var message = !loaded ? 
-                    (<LoadingMessage />) : 
-                      (summary.length === 0 ? 
-                        <LoadingMessage message={en} heMessage={he} /> : null);
+    var noResultsMessage = <LoadingMessage message={en} heMessage={he} />;
+    var message = !loaded ? (<LoadingMessage />) : (summary.length === 0 ? noResultsMessage : null);
     
     var showAllFilters = !filter.length;
     if (!showAllFilters) {
@@ -5438,6 +5468,8 @@ var TextList = React.createClass({
                 return a.sourceRef > b.sourceRef ? 1 : -1;
             }
         });
+
+        var message = !loaded ? (<LoadingMessage />) : (links.length === 0 ? noResultsMessage : null);
         var content = links.length == 0 ? message :
                       this.state.waitForText && !this.state.textLoaded ? 
                         (<LoadingMessage />) : 
@@ -5457,7 +5489,6 @@ var TextList = React.createClass({
                                         onOpenConnectionsClick={this.props.onOpenConnectionsClick} />);
                           }, this);          
       }
-    
     }
 
     var classes = classNames({textList: 1, fullPanel: this.props.fullPanel});
@@ -7300,12 +7331,12 @@ var AccountPanel = React.createClass({
   render: function() {
     var width = typeof window !== "undefined" ? $(window).width() : 1000;
     var accountContent = [
-      (<BlockLink interfaceLink={true} target="/my/profile" title="Profile" heTitle="פרופיל"/>),
-      (<BlockLink interfaceLink={true} target="/sheets/private" title="My Source Sheets" heTitle="דפי מקורות" />),
-      (<BlockLink interfaceLink={true} target="/coming-soon?my-notes" title="My Notes" heTitle="רשומות" />),
-      (<BlockLink interfaceLink={true} target="/coming-soon?reading-history" title="Reading History" heTitle="היסטורית קריאה" />),
-      (<BlockLink interfaceLink={true} target="/settings/account" title="Settings" heTitle="הגדרות" />),
-      (<BlockLink interfaceLink={true} target="/logout" title="Log Out" heTitle="ניתוק" />)
+      (<BlockLink interfaceLink={true} target="/my/profile" title="Profile" heTitle="פרופיל" image="/static/img/profile.svg" />),
+      (<BlockLink interfaceLink={true} target="/sheets/private" title="Source Sheets" heTitle="דפי מקורות" image="/static/img/sheet.svg" />),
+      (<BlockLink interfaceLink={true} target="/coming-soon?my-notes" title="Notes" heTitle="רשומות" image="/static/img/note.svg" />),
+      (<BlockLink interfaceLink={true} target="/coming-soon?reading-history" title="Reading History" heTitle="היסטורית קריאה" image="/static/img/readinghistory.svg" />),
+      (<BlockLink interfaceLink={true} target="/settings/account" title="Settings" heTitle="הגדרות" image="/static/img/settings.svg" />),
+      (<BlockLink interfaceLink={true} target="/logout" title="Log Out" heTitle="ניתוק" image="/static/img/logout.svg" />)
     ];
     accountContent = (<TwoOrThreeBox content={accountContent} width={width} />);
 

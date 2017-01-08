@@ -15,6 +15,7 @@ import zlib
 from bson.json_util import dumps
 import p929
 import socket
+import bleach
 
 from django.views.decorators.cache import cache_page
 from django.template import RequestContext, loader
@@ -250,7 +251,7 @@ def make_panel_dict(oref, version, language, filter, mode, **kwargs):
         }
     else:
         oref = oref.first_available_section_ref()
-        panelDisplayLanguage = kwargs.get("panelDisplayLanguage", None)
+        panelDisplayLanguage = kwargs.get("panelDisplayLanguage")
         panel = {
             "mode": mode,
             "ref": oref.normal(),
@@ -343,7 +344,7 @@ def s2(request, ref, version=None, lang=None):
     if version and not Version().load({"versionTitle": version, "language": lang}):
         raise Http404
 
-    panels += make_panel_dicts(oref, version, lang, filter, multi_panel, **{"panelDisplayLanguage": request.GET.get("lang", None)})
+    panels += make_panel_dicts(oref, version, lang, filter, multi_panel, **{"panelDisplayLanguage": request.GET.get("lang", props["initialSettings"]["language"])})
 
     # Handle any panels after 1 which are identified with params like `p2`, `v2`, `l2`.
     i = 2
@@ -362,7 +363,7 @@ def s2(request, ref, version=None, lang=None):
         language = request.GET.get("l{}".format(i))
         filter   = request.GET.get("w{}".format(i)).replace("_", " ").split("+") if request.GET.get("w{}".format(i)) else None
         filter   = [] if filter == ["all"] else filter
-        panelDisplayLanguage = request.GET.get("lang{}".format(i), None)
+        panelDisplayLanguage = request.GET.get("lang{}".format(i), props["initialSettings"]["language"])
 
         if version and not Version().load({"versionTitle": version, "language": language}):
             i += 1
@@ -385,10 +386,26 @@ def s2(request, ref, version=None, lang=None):
         "initialNavigationCategories": None,
     })
     propsJSON = json.dumps(props)
+
+    try:
+        title = props["initialPanels"][0]["text"].get("ref","")
+        desc = ' '.join(props["initialPanels"][0]["text"].get("text","")) # get english text for section if it exists, and flatten the list
+        if desc == "":
+            desc = ' '.join(props["initialPanels"][0]["text"].get("he","")) # if no english, fall back on hebrew and flatten
+        desc = bleach.clean(desc, strip=True, tags=())
+        desc = desc[:145].rsplit(' ', 1)[0]+"..." # truncate as close to 145 characters as possible while maintaining whole word. Append ellipses.
+
+    except:
+        title = "Sefaria: a Living Library of Jewish Texts Online"
+        desc = "Explore 3,000 years of Jewish texts in Hebrew and English translation."
+
     html = render_react_component("ReaderApp", props)
     return render_to_response('s2.html', {
+
         "propsJSON":      propsJSON,
         "html":           html,
+        "title":          title,
+        "desc":           desc
     }, RequestContext(request))
 
 
@@ -865,7 +882,7 @@ def make_simple_toc_html(he_toc, en_toc, labels, addresses, context_oref, zoom=1
         sectionName += u"<span class='en'>" + hebrew_plural(labels[0]) + u"</span>"
         sectionName += u"<span class='he'>" + hebrew_term(labels[0]) + u"</span>"
         sectionName += u"</div>"
-        html = sectionName + html
+        html = sectionName + html if html else ""
 
     else:
         # We're above the terminal level, recur into the subsections (for zoom = 1, this recurs into super-sections)
@@ -894,9 +911,13 @@ def make_simple_toc_html(he_toc, en_toc, labels, addresses, context_oref, zoom=1
                 offset_lines=section_offset_lines
             )
 
+            hide_toc_section = False
+            if section_html == "":
+                hide_toc_section = True
+
             section = subref.normal_last_section("en")
             he_section = subref.normal_last_section("he", dotted=True, punctuation=False)
-            html += u"<div class='tocSection'>"
+            html += u"<div class='tocSection{}'>".format(u" noSubLevels" if hide_toc_section else u"")
             html += u"<div class='sectionName'>"
             html += u"<span class='en'>" + labels[0] + u" " + section + u"</span>"
             html += u"<span class='he'>" + hebrew_term(labels[0]) + u" " + he_section + u"</span>"

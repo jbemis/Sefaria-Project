@@ -164,7 +164,7 @@ class TermSet(abst.AbstractMongoSet):
 class TermScheme(abst.AbstractMongoRecord):
     """
     A TermScheme is a category of terms.
-    Example: Parsha, Perek
+    Example: Parasha, Perek
     """
     collection = 'term_scheme'
     track_pkeys = True
@@ -522,9 +522,9 @@ class TitledTreeNode(TreeNode):
         """
         if not self._full_title.get(lang) or force_update:
             if self.is_default():
-                self._full_title[lang] = self.parent.full_title(lang)
+                self._full_title[lang] = self.parent.full_title(lang, force_update)
             elif self.parent:
-                self._full_title[lang] = self.parent.full_title(lang) + ", " + self.primary_title(lang)
+                self._full_title[lang] = self.parent.full_title(lang, force_update) + ", " + self.primary_title(lang)
             else:
                 self._full_title[lang] = self.primary_title(lang)
         return self._full_title[lang]
@@ -603,6 +603,10 @@ class TitledTreeNode(TreeNode):
     def add_shared_term(self, term):
         self.sharedTitle = term
         self._process_terms()
+
+    def add_primary_titles(self, en_title, he_title):
+        self.add_title(en_title, 'en', primary=True)
+        self.add_title(he_title, 'he', primary=True)
 
     def validate(self):
         super(TitledTreeNode, self).validate()
@@ -792,6 +796,14 @@ class NumberedTitledTreeNode(TitledTreeNode):
 
         return ret
 
+    def add_structure(self, section_names, address_types=None):
+        self.depth = len(section_names)
+        self.sectionNames = section_names
+        if address_types is None:
+            self.addressTypes = ['Integer'] * len(section_names)
+        else:
+            self.address_types = address_types
+
     def serialize(self, **kwargs):
         d = super(NumberedTitledTreeNode, self).serialize(**kwargs)
         if kwargs.get("translate_sections"):
@@ -928,6 +940,12 @@ class SchemaNode(TitledTreeNode):
 
     def create_skeleton(self):
         return self.create_content(lambda n: [])
+
+    def add_primary_titles(self, en_title, he_title, key_as_title=True):
+        self.add_title(en_title, 'en', primary=True)
+        self.add_title(he_title, 'he', primary=True)
+        if key_as_title:
+            self.key = en_title
 
     def visit_content(self, callback, *contents, **kwargs):
         """

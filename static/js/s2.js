@@ -363,7 +363,7 @@ var ReaderApp = React.createClass({
         return true;
       }
 
-      if (prev.mode !== next.mode || prev.menuOpen !== next.menuOpen || prev.menuOpen === "book toc" && prev.bookRef !== next.bookRef || next.mode === "Text" && prev.refs.slice(-1)[0] !== next.refs.slice(-1)[0] || next.mode === "TextAndConnections" && prev.highlightedRefs.slice(-1)[0] !== next.highlightedRefs.slice(-1)[0] || (next.mode === "Connections" || next.mode === "TextAndConnections") && prev.filter && !prev.filter.compare(next.filter) || next.mode === "Connections" && !prev.refs.compare(next.refs) || prev.navigationSheetTag !== next.navigationSheetTag || prev.version !== next.version || prev.versionLanguage !== next.versionLanguage || prev.searchQuery != next.searchQuery || prev.appliedSearchFilters && next.appliedSearchFilters && prev.appliedSearchFilters.length !== next.appliedSearchFilters.length || prev.appliedSearchFilters && next.appliedSearchFilters && !prev.appliedSearchFilters.compare(next.appliedSearchFilters) || prev.settings.language != next.settings.language) {
+      if (prev.mode !== next.mode || prev.menuOpen !== next.menuOpen || prev.menuOpen === "book toc" && prev.bookRef !== next.bookRef || next.mode === "Text" && prev.refs.slice(-1)[0] !== next.refs.slice(-1)[0] || next.mode === "Text" && !prev.highlightedRefs.compare(next.highlightedRefs) || next.mode === "TextAndConnections" && prev.highlightedRefs.slice(-1)[0] !== next.highlightedRefs.slice(-1)[0] || (next.mode === "Connections" || next.mode === "TextAndConnections") && prev.filter && !prev.filter.compare(next.filter) || next.mode === "Connections" && !prev.refs.compare(next.refs) || prev.navigationSheetTag !== next.navigationSheetTag || prev.version !== next.version || prev.versionLanguage !== next.versionLanguage || prev.searchQuery != next.searchQuery || prev.appliedSearchFilters && next.appliedSearchFilters && prev.appliedSearchFilters.length !== next.appliedSearchFilters.length || prev.appliedSearchFilters && next.appliedSearchFilters && !prev.appliedSearchFilters.compare(next.appliedSearchFilters) || prev.settings.language != next.settings.language) {
         return true;
       } else if (prev.navigationCategories !== next.navigationCategories) {
         // Handle array comparison, !== could mean one is null or both are arrays
@@ -487,19 +487,19 @@ var ReaderApp = React.createClass({
             break;
         }
       } else if (state.mode === "Text") {
-        hist.title = state.refs.slice(-1)[0];
+        hist.title = state.highlightedRefs.length ? Sefaria.normRefList(state.highlightedRefs) : state.refs.slice(-1)[0];
         hist.url = Sefaria.normRef(hist.title);
         hist.version = state.version;
         hist.versionLanguage = state.versionLanguage;
         hist.mode = "Text";
       } else if (state.mode === "Connections") {
-        var ref = state.refs.slice(-1)[0];
+        var ref = Sefaria.normRefList(state.refs);
         hist.sources = state.filter.length ? state.filter.join("+") : "all";
         hist.title = ref + " with " + (hist.sources === "all" ? "Connections" : hist.sources);
         hist.url = Sefaria.normRef(ref); // + "?with=" + sources;
         hist.mode = "Connections";
       } else if (state.mode === "TextAndConnections") {
-        var ref = state.highlightedRefs.slice(-1)[0];
+        var ref = Sefaria.normRefList(state.highlightedRefs);
         hist.sources = state.filter.length ? state.filter[0] : "all";
         hist.title = ref + " with " + (hist.sources === "all" ? "Connections" : hist.sources);
         hist.url = Sefaria.normRef(ref); // + "?with=" + sources;
@@ -637,7 +637,7 @@ var ReaderApp = React.createClass({
       version: state.version || null,
       versionLanguage: state.versionLanguage || null,
       highlightedRefs: state.highlightedRefs || [],
-      recentFilters: state.filter || [],
+      recentFilters: state.recentFilters || state.filter || [],
       menuOpen: state.menuOpen || null, // "navigation", "text toc", "display", "search", "sheets", "home", "book toc"
       navigationCategories: state.navigationCategories || [],
       navigationSheetTag: state.sheetsTag || null,
@@ -953,12 +953,17 @@ var ReaderApp = React.createClass({
       this.openTextListAt(n + 1, refs);
     }
   },
-  setConnectionsFilter: function setConnectionsFilter(n, filter) {
+  setConnectionsFilter: function setConnectionsFilter(n, filter, updateRecent) {
     // Set the filter for connections panel at `n`, carry data onto the panel's basetext as well.
     var connectionsPanel = this.state.panels[n];
     var basePanel = this.state.panels[n - 1];
     if (filter) {
-      connectionsPanel.recentFilters.push(filter);
+      if (updateRecent) {
+        if (Sefaria.util.inArray(filter, connectionsPanel.recentFilters) !== -1) {
+          connectionsPanel.recentFilters.toggle(filter);
+        }
+        connectionsPanel.recentFilters = [filter].concat(connectionsPanel.recentFilters);
+      }
       connectionsPanel.filter = [filter];
     } else {
       connectionsPanel.filter = [];
@@ -1826,7 +1831,7 @@ var ReaderPanel = React.createClass({
     // Sets the current filter for Connected Texts (TextList)
     // If updateRecent is true, include the current setting in the list of recent filters.
     if (this.props.setConnectionsFilter) {
-      this.props.setConnectionsFilter(filter);
+      this.props.setConnectionsFilter(filter, updateRecent);
     } else {
       if (updateRecent && filter) {
         if (Sefaria.util.inArray(filter, this.state.recentFilters) !== -1) {
@@ -1903,7 +1908,7 @@ var ReaderPanel = React.createClass({
       "Add Note": 1,
       "My Notes": 1,
       "Add Connection": 1,
-      "Add Translation": 1 // Is this used?
+      "Add Translation": 1
     };
     Sefaria.site.track.event("Tools", mode + " Click");
     if (!Sefaria._uid && mode in loginRequired) {
@@ -2972,6 +2977,7 @@ var BlockLink = React.createClass({
     title: React.PropTypes.string,
     heTitle: React.PropTypes.string,
     target: React.PropTypes.string,
+    image: React.PropTypes.string,
     interfaceLink: React.PropTypes.bool
   },
   getDefaultProps: function getDefaultProps() {
@@ -2984,6 +2990,7 @@ var BlockLink = React.createClass({
     return React.createElement(
       'a',
       { className: 'blockLink', href: this.props.target },
+      this.props.image ? React.createElement('img', { src: this.props.image }) : null,
       React.createElement(
         'span',
         { className: interfaceClass + 'en' },
@@ -3122,7 +3129,7 @@ var ReaderNavigationCategoryMenu = React.createClass({
             )
           ) : null,
           toggle,
-          React.createElement(ReaderNavigationCategoryMenuContents, { contents: catContents, categories: categories, width: this.props.width })
+          React.createElement(ReaderNavigationCategoryMenuContents, { contents: catContents, categories: categories, width: this.props.width, category: this.props.category })
         ),
         footer
       )
@@ -3135,9 +3142,32 @@ var ReaderNavigationCategoryMenuContents = React.createClass({
 
   // Inner content of Category menu (just category title and boxes of)
   propTypes: {
+    category: React.PropTypes.string.isRequired,
     contents: React.PropTypes.array.isRequired,
     categories: React.PropTypes.array.isRequired,
     width: React.PropTypes.number
+  },
+
+  getRenderedTextTitleString: function getRenderedTextTitleString(title, heTitle) {
+    var whiteList = ['Midrash Mishlei', 'Midrash Tehillim', 'Midrash Tanchuma'];
+    var displayCategory = this.props.category;
+    var displayHeCategory = Sefaria.hebrewCategory(this.props.category);
+    if (whiteList.indexOf(title) == -1) {
+      var replaceTitles = {
+        "en": ['Jerusalem Talmud', displayCategory],
+        "he": ['תלמוד ירושלמי', displayHeCategory]
+      };
+      var replaceOther = {
+        "en": [", ", " on "],
+        "he": [", ", " על "]
+      };
+      //this will replace a categroy name at the beginning of the title string and any connector strings (0 or 1) that follow.
+      var titleRe = new RegExp('^(' + replaceTitles['en'].join("|") + ')(' + replaceOther['en'].join("|") + ')?');
+      var heTitleRe = new RegExp('^(' + replaceTitles['he'].join("|") + ')(' + replaceOther['he'].join("|") + ')?');
+      title = title == displayCategory ? title : title.replace(titleRe, "");
+      heTitle = heTitle == displayHeCategory ? heTitle : heTitle.replace(heTitleRe, "");
+    }
+    return [title, heTitle];
   },
   render: function render() {
     var content = [];
@@ -3191,12 +3221,18 @@ var ReaderNavigationCategoryMenuContents = React.createClass({
               item.heCategory
             )
           ),
-          React.createElement(ReaderNavigationCategoryMenuContents, { contents: item.contents, categories: newCats, width: this.props.width })
+          React.createElement(ReaderNavigationCategoryMenuContents, { contents: item.contents, categories: newCats, width: this.props.width, category: this.props.category })
         ));
       } else {
-        // Add a Text
-        var title = item.title.replace(/(Mishneh Torah,|Shulchan Arukh,|Jerusalem Talmud) /, "");
-        var heTitle = item.heTitle.replace(/(משנה תורה,|תלמוד ירושלמי) /, "");
+        //Add a Text
+
+        var _getRenderedTextTitle = this.getRenderedTextTitleString(item.title, item.heTitle);
+
+        var _getRenderedTextTitle2 = _slicedToArray(_getRenderedTextTitle, 2);
+
+        var title = _getRenderedTextTitle2[0];
+        var heTitle = _getRenderedTextTitle2[1];
+
         var url = "/" + Sefaria.normRef(item.firstSection);
         content.push(React.createElement(
           'a',
@@ -3447,7 +3483,7 @@ var ReaderTextTableOfContents = React.createClass({
 
     var tocHtml = Sefaria.textTocHtml(this.props.title);
 
-    tocHtml = tocHtml || '<div class="loadingMessage"><span class="int-en">Loading...</span><span class="int-he">טוען...</span></div>';
+    tocHtml = tocHtml || React.createElement(LoadingMessage, null);
 
     var title = this.props.title;
     var heTitle = Sefaria.index(title) ? Sefaria.index(title).heTitle : title;
@@ -3824,13 +3860,9 @@ var ReaderTextTableOfContents = React.createClass({
           this.isTextToc() ? React.createElement(
             'div',
             { className: 'currentVersionBox' },
-            !this.state.versionsLoaded ? React.createElement(
-              'span',
-              null,
-              'Loading...'
-            ) : "",
-            this.state.versionsLoaded ? currentVersionElement : "",
-            this.state.versionsLoaded && this.state.versions.length > 1 ? selectElement : ""
+            !this.state.versionsLoaded ? React.createElement(LoadingMessage, null) : null,
+            this.state.versionsLoaded ? currentVersionElement : null,
+            this.state.versionsLoaded && this.state.versions.length > 1 ? selectElement : null
           ) : null,
           moderatorSection,
           React.createElement('div', { className: 'tocContent', dangerouslySetInnerHTML: { __html: tocHtml }, onClick: this.handleClick }),
@@ -3856,7 +3888,7 @@ var VersionBlock = React.createClass({
     return {
       ref: "",
       showHistory: false,
-      showNotes: false
+      showNotes: true
     };
   },
   getInitialState: function getInitialState() {
@@ -3877,7 +3909,8 @@ var VersionBlock = React.createClass({
     "Public Domain": "http://en.wikipedia.org/wiki/Public_domain",
     "CC0": "http://creativecommons.org/publicdomain/zero/1.0/",
     "CC-BY": "http://creativecommons.org/licenses/by/3.0/",
-    "CC-BY-SA": "http://creativecommons.org/licenses/by-sa/3.0/"
+    "CC-BY-SA": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "CC-BY-NC": "https://creativecommons.org/licenses/by-nc/4.0/"
   },
   onLicenseChange: function onLicenseChange(event) {
     this.setState({ license: event.target.value, "error": null });
@@ -6636,11 +6669,11 @@ var TextList = React.createClass({
     var sectionRef = this.getSectionRef();
     var isSingleCommentary = filter.length == 1 && Sefaria.index(filter[0]) && Sefaria.index(filter[0]).categories == "Commentary";
 
-    //if (summary.length && !links.length) { debugger; }
     var en = "No connections known" + (filter.length ? " for " + filter.join(", ") : "") + ".";
     var he = "אין קשרים ידועים" + (filter.length ? " ל" + filter.join(", ") : "") + ".";
     var loaded = Sefaria.linksLoaded(sectionRef);
-    var message = !loaded ? React.createElement(LoadingMessage, null) : summary.length === 0 ? React.createElement(LoadingMessage, { message: en, heMessage: he }) : null;
+    var noResultsMessage = React.createElement(LoadingMessage, { message: en, heMessage: he });
+    var message = !loaded ? React.createElement(LoadingMessage, null) : summary.length === 0 ? noResultsMessage : null;
 
     var showAllFilters = !filter.length;
     if (!showAllFilters) {
@@ -6707,6 +6740,8 @@ var TextList = React.createClass({
             return a.sourceRef > b.sourceRef ? 1 : -1;
           }
         });
+
+        var message = !loaded ? React.createElement(LoadingMessage, null) : links.length === 0 ? noResultsMessage : null;
         var content = links.length == 0 ? message : this.state.waitForText && !this.state.textLoaded ? React.createElement(LoadingMessage, null) : links.map(function (link, i) {
           var hideTitle = link.category === "Commentary" && this.props.filter[0] !== "Commentary";
           return React.createElement(TextRange, {
@@ -9128,7 +9163,7 @@ var AccountPanel = React.createClass({
   },
   render: function render() {
     var width = typeof window !== "undefined" ? $(window).width() : 1000;
-    var accountContent = [React.createElement(BlockLink, { interfaceLink: true, target: '/my/profile', title: 'Profile', heTitle: 'פרופיל' }), React.createElement(BlockLink, { interfaceLink: true, target: '/sheets/private', title: 'My Source Sheets', heTitle: 'דפי מקורות' }), React.createElement(BlockLink, { interfaceLink: true, target: '/coming-soon?my-notes', title: 'My Notes', heTitle: 'רשומות' }), React.createElement(BlockLink, { interfaceLink: true, target: '/coming-soon?reading-history', title: 'Reading History', heTitle: 'היסטורית קריאה' }), React.createElement(BlockLink, { interfaceLink: true, target: '/settings/account', title: 'Settings', heTitle: 'הגדרות' }), React.createElement(BlockLink, { interfaceLink: true, target: '/logout', title: 'Log Out', heTitle: 'ניתוק' })];
+    var accountContent = [React.createElement(BlockLink, { interfaceLink: true, target: '/my/profile', title: 'Profile', heTitle: 'פרופיל', image: '/static/img/profile.svg' }), React.createElement(BlockLink, { interfaceLink: true, target: '/sheets/private', title: 'Source Sheets', heTitle: 'דפי מקורות', image: '/static/img/sheet.svg' }), React.createElement(BlockLink, { interfaceLink: true, target: '/coming-soon?my-notes', title: 'Notes', heTitle: 'רשומות', image: '/static/img/note.svg' }), React.createElement(BlockLink, { interfaceLink: true, target: '/coming-soon?reading-history', title: 'Reading History', heTitle: 'היסטורית קריאה', image: '/static/img/readinghistory.svg' }), React.createElement(BlockLink, { interfaceLink: true, target: '/settings/account', title: 'Settings', heTitle: 'הגדרות', image: '/static/img/settings.svg' }), React.createElement(BlockLink, { interfaceLink: true, target: '/logout', title: 'Log Out', heTitle: 'ניתוק', image: '/static/img/logout.svg' })];
     accountContent = React.createElement(TwoOrThreeBox, { content: accountContent, width: width });
 
     var learnContent = [React.createElement(BlockLink, { interfaceLink: true, target: '/about', title: 'About', heTitle: 'אודות' }), React.createElement(BlockLink, { interfaceLink: true, target: '/help', title: 'Help', heTitle: 'עזרה' }), React.createElement(BlockLink, { interfaceLink: true, target: 'http://blog.sefaria.org', title: 'Blog', heTitle: 'בלוג' }), React.createElement(BlockLink, { interfaceLink: true, target: '/faq', title: 'FAQ', heTitle: 'שאלות נפוצות' }), React.createElement(BlockLink, { interfaceLink: true, target: '/educators', title: 'Educators', heTitle: 'מחנכים' }), React.createElement(BlockLink, { interfaceLink: true, target: '/team', title: 'Team', heTitle: 'צוות' })];

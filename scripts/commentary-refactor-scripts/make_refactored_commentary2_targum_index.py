@@ -80,6 +80,9 @@ base_text_mappings = {
     "Marganita Tava al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
     "Megilat Esther al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
     "Rambam Introduction to Masechet Horayot" : ["Mishnah Horayot"]
+    #"JPS 1985 Footnotes" : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
+    "Akeidat Yitzchak" : [],
+    "Bekhor Shor" : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"]
 }
 
 for com2 in commentary2:

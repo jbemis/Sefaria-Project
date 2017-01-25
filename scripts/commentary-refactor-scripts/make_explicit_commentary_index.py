@@ -24,7 +24,6 @@ def make_explicit_commentary_index(title):
         'base_text_titles': [idx.commentaryBook],
         'collective_title': idx.commentator,
         'base_text_mapping': 'commentary_increment_base_text_depth',
-        'related_categories': other_categories
     }
 
     nidx = Index(new_idx)

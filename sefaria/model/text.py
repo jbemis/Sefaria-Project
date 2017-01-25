@@ -207,8 +207,7 @@ class Index(abst.AbstractMongoRecord, AbstractIndex):
         "dependence", #commentary: to denote commentaries and other potential not standalone texts
         "base_text_titles", #the base book(s) this one is dpenedant on
         "base_text_mapping",
-        "collective_title",
-        "related_categories"
+        "collective_title"
     ]
 
     def __unicode__(self):

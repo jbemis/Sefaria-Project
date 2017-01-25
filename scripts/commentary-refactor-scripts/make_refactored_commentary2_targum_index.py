@@ -79,9 +79,9 @@ base_text_mappings = {
     "Kinaat Sofrim al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
     "Marganita Tava al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
     "Megilat Esther al Sefer Hamitzvot" : ["Sefer HaMitzvot LaRambam"],
-    "Rambam Introduction to Masechet Horayot" : ["Mishnah Horayot"]
+    "Rambam Introduction to Masechet Horayot" : ["Mishnah Horayot"],
     #"JPS 1985 Footnotes" : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
-    "Akeidat Yitzchak" : [],
+    "Akeidat Yitzchak" : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"],
     "Bekhor Shor" : ["Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy"]
 }
 

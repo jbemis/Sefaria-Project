@@ -82,7 +82,8 @@ collective_works_categories = {
     "Tur and Commentaries": u'טור ומפרשיו',
     "Yachin": u'יכין',
     "Boaz": u'בועז',
-    "Harchev Davar": u'הרחב דבר'
+    "Harchev Davar": u'הרחב דבר',
+    "Minchat Shai": u'מנחת שי'
 }
 
 pseudo_categories = {

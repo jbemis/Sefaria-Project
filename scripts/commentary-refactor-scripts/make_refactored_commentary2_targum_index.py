@@ -122,7 +122,7 @@ for com2 in commentary2:
         he_collective_title = hebrew_term(com2.collective_title)
         if not he_collective_title or not is_hebrew(he_collective_title):
             he_collective_title = com2.get_title("he").split(u" על ")[0]
-        term = Term({"name": com2.collective_title, 'scheme': 'commentary_titles'})
+        term = Term({"name": com2.collective_title, 'scheme': 'commentary_works'})
         titles = [
             {
                 "lang": "en",

@@ -507,7 +507,7 @@ def hebrew_term(s):
 		"Boaz": u'בועז',
         "Harchev Davar": u'הרחב דבר',
 		"Grammatica Hebraica" : u'דקדוק',
-		"Minchat Shai": u'מנחת שי'
+		"Minchat Shai": u'מנחת שי',
 		"Guides": u'ספרות עזר'
 	}
 

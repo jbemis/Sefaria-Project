@@ -83,7 +83,8 @@ collective_works_categories = {
     "Yachin": u'יכין',
     "Boaz": u'בועז',
     "Harchev Davar": u'הרחב דבר',
-    "Minchat Shai": u'מנחת שי'
+    "Minchat Shai": u'מנחת שי',
+	"Guides": u'ספרות עזר'
 }
 
 pseudo_categories = {

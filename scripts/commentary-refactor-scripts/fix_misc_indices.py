@@ -8,7 +8,7 @@ for idx in rifs:
     categories = ['Talmud', 'Bavli', 'Commentary', 'Rif']
     base_book = idx.title.replace("Rif ", '').strip()
     idx.dependence = 'Commentary'
-    idx.work_title = "Rif"
+    idx.collective_title = "Rif"
     idx.base_text_mapping = None
     bidx = library.get_index(base_book)
     idx.base_text_titles = [base_book]

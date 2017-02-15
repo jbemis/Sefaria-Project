@@ -38,7 +38,7 @@ ksfs = IndexSet({"title": {"$regex": "^Kessef Mishneh"}})
 for idx in ksfs:
     print idx.title
     idx.categories.insert(2, "Kessef Mishneh")
-    base_book = idx.title.replace("Kessef Mishneh ", '').strip()
+    base_book = idx.title.replace("Kessef Mishneh on ", '').strip()
     idx.dependence = 'Commentary'
     idx.collective_title = "Kessef Mishneh"
     idx.base_text_mapping = None

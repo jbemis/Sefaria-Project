@@ -24,3 +24,23 @@ for idx in boazs:
     if new_base_text not in idx.base_text_titles:
         idx.base_text_titles.append(new_base_text)
         idx.save(override_dependencies=True)
+
+print "Adding fields to Divrei Negisdim"
+dnidx = Index().load({'title': 'Divrei Negidim'})
+dnidx.collective_title = "Divrei Negidim"
+dnidx.dependence = 'Commentary'
+dnidx.base_text_mapping = None
+dnidx.base_text_titles = ['Pesach Haggadah']
+dnidx.save(override_dependencies=True)
+
+print "Fixing Kessef Mishneh Index Records..."
+ksfs = IndexSet({"title": {"$regex": "^Kessef Mishneh"}})
+for idx in ksfs:
+    print idx.title
+    idx.categories.insert(2, "Kessef Mishneh")
+    base_book = idx.title.replace("Kessef Mishneh ", '').strip()
+    idx.dependence = 'Commentary'
+    idx.collective_title = "Kessef Mishneh"
+    idx.base_text_mapping = None
+    idx.base_text_titles = [base_book]
+    idx.save(override_dependencies=True)

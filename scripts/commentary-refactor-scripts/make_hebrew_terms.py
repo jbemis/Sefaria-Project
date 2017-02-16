@@ -84,7 +84,9 @@ collective_works_categories = {
     "Boaz": u'בועז',
     "Harchev Davar": u'הרחב דבר',
     "Minchat Shai": u'מנחת שי',
-	"Guides": u'ספרות עזר'
+	"Guides": u'ספרות עזר',
+    "Kessef Mishneh": u'כסף משנה'
+
 }
 
 pseudo_categories = {

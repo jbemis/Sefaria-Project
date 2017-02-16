@@ -713,7 +713,7 @@ class CommentaryIndex(AbstractIndex):
         # This whole dance is a bit of a mess.
         # Todo: see if we can clean it up a bit
         # could expose the b_index and c_index records to consumers of this object, and forget the renaming
-        self.__dict__.update(self.c_index.contents())
+        self.__dict__.update(self.c_index.contents(raw=True))
         self.commentaryBook = self.b_index.get_title()
         self.commentaryCategories = self.b_index.categories
         self.categories = ["Commentary"] + [self.b_index.categories[0], commentator_name]

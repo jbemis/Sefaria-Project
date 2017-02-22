@@ -176,6 +176,23 @@ section_names = {
     "Remez":	u"רמז"
 }
 
+search_filter_toc_pseudo_categories = {
+    "Tanakh Commentaries" : u'פרשנות תנ"ך',
+    "Mishnah Commentaries" : u'פרשנות משנה',
+    "Talmud Commentaries" : u'פרשנות תלמוד',
+    "Midrash Commentaries" : u'פרשנות מדרש',
+    "Halakhah Commentaries" : u'פרשנות הלכה',
+    "Kabbalah Commentaries" : u'פרשנות קבלה',
+    "Liturgy Commentaries" : u'פרשנות תפילה',
+    "Philosophy Commentaries" : u'פרשנות מחשבת ישראל',
+    "Tosefta Commentaries" : u'פרשנות תוספתא',
+    "Chasidut Commentaries" : u'פרשנות חסידות',
+    "Musar Commentaries" : u'פרשנות ספרי מוסר',
+    "Responsa Commentaries" : u'פרשנות שו"ת',
+    "Apocrypha Commentaries" : u'פרשנות ספרות חיצונית',
+    "Modern Works Commentaries" : u'פרשנות יצירות מודרניות',
+    "Other Commentaries" : u'פרשנות אחרת'
+}
 
 def create_term(eng_title, he_title, scheme):
     term = Term().load({"name": eng_title})
@@ -217,3 +234,5 @@ print "PSEUDO CATEGORIES"
 turn_translation_table_into_terms(pseudo_categories, 'pseudo_toc_categories')
 print "SECTION NAMES"
 turn_translation_table_into_terms(section_names, 'section_names')
+print "SEARCH FILTER CATEGORIES"
+turn_translation_table_into_terms(search_filter_toc_pseudo_categories, 'search_filter_categories')

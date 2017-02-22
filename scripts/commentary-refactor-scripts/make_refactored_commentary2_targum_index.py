@@ -30,7 +30,7 @@ for trg in targums:
             break
     trg.dependence = 'Targum'
     trg.collective_title = collective_title
-    trg.base_text_mapping = 'match_base_text_depth'
+    trg.base_text_mapping = 'one_to_one'
     related_categories = []
     if base_books:
         trg.base_text_titles = base_books

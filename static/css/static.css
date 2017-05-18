@@ -25,6 +25,9 @@
   margin: 0 auto;
   padding: 124px 0 100px;
 }
+#register.static .inner {
+  width: 100%;
+}
 .static .int-en {
   font-family: "adobe-garamond-pro", Georgia, serif;
 }
@@ -34,7 +37,7 @@
 .static .control-elem, .static .control-elem .int-en{
   font-family: "proxima-nova", "Helvetica Neue", "Helvetica", sans-serif;
 }
-.static .control-elem .int-he{
+.static .control-elem .int-he {
   font-family: "Open Sans Hebrew", sans-serif;
 }
 .static .sans .int-en, .static.sans .int-en, .static .sans {
@@ -147,6 +150,9 @@
 .static .page-title{
   margin-bottom: 50px;
 }
+.static label.button {
+  height: auto;
+}
 .static .row{
 
 }
@@ -192,6 +198,7 @@
 #homePage {
   overflow: hidden;
   color: #333;
+  background-color: transparent;
 }
 /*#homePage .int-en {
   font-family: "adobe-garamond-pro", Georgia, serif;  
@@ -210,14 +217,21 @@
 }
 #homePage #homeCover {
   color: white;
-  background-color: #212E50;
-  background-image: url("/static/img/landing.png");
-  background-size: cover;
-  background-position: center;
-  height: 560px;
-  padding: 157px 0;
+  height: 570px;
+  padding: 180px 0;
+  background-color: #ADA99B;
   box-sizing: border-box;
   text-align: center;
+  overflow: hidden;
+  position: relative;
+}
+#homeCover #homeVideo {
+  position: absolute;
+  top: -90px;
+  left: 0;
+  width: 100%;
+  min-width: 1200px;
+  z-index: 0;
 }
 #homePage #homeCover h1 {
   color: white;
@@ -230,6 +244,7 @@
   font-size: 22px;
   font-style: italic;
   margin: 0;
+  position: relative;
 }
 #homePage #homeCover .sub .int-he{
   font-style: normal;
@@ -238,12 +253,14 @@
   color: white;
   font-style: normal;
   font-size: 21px;
+  position: relative;
 }
 #homePage #homeCover .button {
   margin-top: 80px;
   text-transform: uppercase;
   padding: 16px 34px;
 }
+
 #homePage .section {
   overflow: hidden;
   padding: 100px 0;
@@ -252,6 +269,9 @@
   width: 720px;
   max-width: 94%;
   margin: auto; 
+}
+#homePage .section:nth-child(even) {
+  background-color: #F9F9F7;
 }
 #homePage .section:nth-child(odd) {
   background-color: white;
@@ -263,6 +283,23 @@
 #homePage .imageBox {
   display: inline-block;
   width: 300px;
+  text-align: center;
+}
+#homePage .imageBox img {
+  max-width: 100%;
+}
+@media screen and (max-width: 700px) {
+  #homePage .sectionInner {
+    width: 350px;
+  }
+  #homePage .textBox, #homePage .imageBox {
+    max-width: 100%;
+    margin: 0 auto;
+    float: none !important;
+  }
+  #homePage .imageBox {
+    margin-top: 20px;
+  }
 }
 #homePage .imageBox.bordered {
   border: 1px solid #ccc;
@@ -613,7 +650,6 @@
 }
 
 .registrationContent {
-  text-align: center;
   margin: 1% auto 0;
   width: 320px;
 }
@@ -637,9 +673,17 @@
   border: 1px solid #bbb;
   width: 100%;
   box-sizing: border-box;
-  color: #999;
+  color: #333;
   font-size: 14px;
 }
+.registrationContent #id_subscribe_announce, .registrationContent #id_subscribe_educator {
+  width: auto;
+}
+
+.registrationContent .helptext {
+  font-size: 16px;
+}
+
 .registrationContent ::placeholder {
   font-family: "proxima-nova", "Helvetica Neue", "Helvetica", sans-serif; 
   color: #999;
@@ -715,7 +759,9 @@
 #visualizationsPage {
   text-align: left;
 }
-
+#visualLibraryPage {
+  padding-top: 70px;
+}
 .static div.single-button{
   margin: 5% 0;
 }
@@ -1074,11 +1120,11 @@
 }
 .static .toggleOption {
   background-color: white;
-  color: #999;
+  color: #666;
 }
 .static .toggleOption.active {
-  color: #333;
-  background-color: white;
+  color: #666;
+  background-color: #eee;
 }
 #personPage h1 {
   margin-bottom: 40px;
@@ -1234,13 +1280,14 @@
   font-size: 18px
 }
 #jobsPage h1 {
-  margin-bottom: 0px;
+  margin-bottom: 0;
 }
 #jobsPage h2 {
   font-size: 22px;
 }
 #jobsPage h2.anchorable {
   padding-top: 90px;
+  margin-top: 0;
 }
 #jobsPage h3 {
   font-size: 16px;
@@ -1364,6 +1411,219 @@
   background-color: white;
 }
 
+#edPage {
+  overflow: hidden;
+  color: #333;
+  background-color: transparent;
+}
+/*#edPage .int-en {
+  font-family: "adobe-garamond-pro", Georgia, serif;
+}
+#edPage .int-he {
+  font-family: "Alef", "Helvetica Neue", Helvetica, Ariel, san-serif;
+}*/
+/*#edPage .button .int-en {
+  font-family: "proxima-nova", "Helvetica Neue", "Helvetica", sans-serif;
+}*/
+/*#edPage .button .int-he {
+  font-family: "Open Sans Hebrew", sans-serif;
+}*/
+#edPage .section {
+  margin-bottom: 0;
+}
+#edPage #edCover {
+  color: white;
+  height: 660px;
+  padding: 225px 0;
+  box-sizing: border-box;
+  text-align: center;
+  overflow: hidden;
+  position: relative;
+  background-image: url(/static/img/edheader.jpg);
+  background-size: cover;
+  background-color: #ADA99B;
+  background-position: center;
+}
+
+#edPage #edCover h1 {
+  color: white;
+  font-weight: normal;
+  font-size: 49px;
+  height: 70px;
+  margin-bottom: 30px;
+}
+#edPage #edCover .sub {
+  font-size: 22px;
+  font-style: italic;
+  margin: 0;
+  position: relative;
+}
+#edPage #edCover a {
+  color: white;
+  font-style: normal;
+  font-size: 21px;
+  position: relative;
+}
+#edPage #edCover .button {
+  margin-top: 80px;
+  padding: 16px 34px;
+}
+
+#edPage .section {
+  overflow: hidden;
+  padding: 100px 0;
+}
+#edPage .sectionInner {
+  width: 720px;
+  max-width: 94%;
+  margin: auto;
+}
+#edPage .section:nth-child(odd) {
+  background-color: #F9F9F7;
+}
+#edPage .section:nth-child(even) {
+  background-color: white;
+}
+#edPage .textBox {
+  display: inline-block;
+  width: 350px;
+}
+#edPage .imageBox {
+  display: inline-block;
+  width: 300px;
+  text-align: center;
+}
+#edPage .imageBox img {
+  max-width: 100%;
+}
+#edPage .imageBox a .button.fullWidth {
+  width: 300px;
+}
+
+@media screen and (max-width: 700px) {
+  #edPage .sectionInner {
+    width: 350px;
+  }
+  #edPage .textBox, #edPage .imageBox {
+    max-width: 100%;
+    margin: 0 auto;
+    float: none !important;
+  }
+  #edPage .imageBox {
+    margin-top: 20px;
+  }
+}
+#edPage .imageBox.bordered {
+  border: 1px solid #ccc;
+}
+#edPage .imageBox.bordered img {
+  display: block;
+}
+#edPage .textLeft .textBox {
+  float: left;
+}
+#edPage .textLeft .imageBox {
+  float: right;
+}
+#edPage .textRight .textBox {
+  float: right;
+}
+#edPage .textRight .imageBox {
+  float: left;
+}
+#edPage .section a .button {
+  display: block;
+  width: 240px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+#edPage .section.center {
+  text-align: center;
+}
+#edPage .section.center .button {
+  margin-left: auto;
+  margin-right: auto;
+}
+#edPage h1, #edPage h2 {
+    font-family: "adobe-garamond-pro", Georgia, serif;
+}
+#edPage h2 {
+  margin: 0 0 12px 0;
+  padding: 0;
+  font-style: italic;
+  font-size: 28px;
+  font-weight: normal;
+  letter-spacing: 1px;
+  text-transform: none;
+  border: none;
+  color:  #666;
+}
+#edPage h2 img {
+  top: 2px;
+  position: relative;
+}
+#edPage .description {
+  margin: 26px 0 34px 0;
+  color: #999;
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.2;
+}
+#edPage .dedication {
+  margin: -12px 0 34px;
+  color: #999;
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.2;
+}
+#edPage .section .button {
+  margin: 0;
+  position: relative;
+}
+#edPage a {
+  color: #999;
+  font-size: 16px;
+}
+#edPage a.refLink {
+  color: #333;
+  font-size: 16px;
+  padding: 12px 0px 15px;
+}
+#edHelp .description {
+  margin: 30px 0 40px;
+}
+#edConnect h2 {
+  margin-bottom: 30px;
+}
+#edConnect #mailingListTitle {
+  margin-bottom: 40px;
+  color: #999;
+  font-size: 14px;
+}
+#edConnect #mailingListEmail {
+  padding: 14px 24px;
+  margin: -4px 8px 0 0;
+  width: 240px;
+  font-size: 16px;
+}
+#edConnect #mailingListEmail::-webkit-input-placeholder { /* Chrome/Opera/Safari */
+  font-family: "proxima-nova", "Helvetica Neue", "Helvetica", sans-serif;
+}
+#edConnect #mailingListEmail::-moz-placeholder { /* Firefox 19+ */
+  font-family: "proxima-nova", "Helvetica Neue", "Helvetica", sans-serif;
+}
+#edConnect #mailingListEmail:-ms-input-placeholder { /* IE 10+ */
+  font-family: "proxima-nova", "Helvetica Neue", "Helvetica", sans-serif;
+}
+#edConnect #mailingListEmail:-moz-placeholder { /* Firefox 18- */
+  font-family: "proxima-nova", "Helvetica Neue", "Helvetica", sans-serif;
+}
+#edConnect #subscribeMsg {
+  margin-top: 40px;
+  font-size: 20px;
+  display: none;
+}
+
 #groupsPage {
     margin: 70px auto;
     text-align: center;
@@ -1476,7 +1736,7 @@
   font-family: 'Taamey Frank', 'Times New Roman', serif;
 }
 #visualGardenPage .int-en {
-  font-family: adobe-garamond-pro, Georgia, serif;
+  font-family: "adobe-garamond-pro", Georgia, serif;
 }
 #visualGardenPage h1 {
   font-size: 36px;
@@ -1539,6 +1799,10 @@ body.interface-hebrew #visualGardenPage .filter-title .reset {
 }
 #visualGardenPage #results .result-ref {
   font-weight: bold;
+}
+#visualGardenPage #results .result-ref i {
+  cursor: pointer;
+  margin: 0 7px;
 }
 #visualGardenPage #results .result-byline {
   font-size: .8em;
@@ -1615,4 +1879,32 @@ body.interface-hebrew #visualGardenPage .filter-title .reset {
   stroke: white;
 }
 
+#visualGardenPage .sourceSheetPanelBox {
+    position: fixed;
+    display: block;
+    left: 40%;
+    top: 90px;
+    width: 330px;
+    padding: 20px;
+    background: white;
+    border: #ccc 2px solid;
+}
+#visualGardenPage .sourceSheetPanelBox .contentInner {
+  margin: 0 auto;
+}
+#visualGardenPage .sourceSheetPanelBox .textList .texts {
+  padding: 0 5px;
+  overflow-y: hidden;
+}
+#visualGardenPage .sourceSheetPanelBox .textList {
+  position: static;
+}
 
+#visualGardenPage .sourceSheetPanelBox .sourceSheetSelector {
+  margin: 0;
+}
+
+#visualGardenPage .sourceSheetBoxTitle i {
+  padding: 0 10px 10px 0;
+  cursor: pointer;
+}

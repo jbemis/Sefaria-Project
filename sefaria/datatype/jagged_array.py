@@ -29,22 +29,118 @@ class JaggedArray(object):
     def array(self):
         return self._store
 
-    def sub_array_length(self, indexes=None):
+    def is_first(self, indexes1, indexes2):
+        """
+
+        :param indexes1: list of 0 based indexes for digging len(indexes) levels into the array
+        :param indexes2: ditto
+        :return: True if indexes1 is before indexes2. If equal, False
+        """
+
+        #pad with 0s so their len == _depth
+        N = self.get_depth()
+        if len(indexes1) <= N:
+            indexes1 += [0] * (N - len(indexes1))
+        else:
+            raise IndexError
+
+        if len(indexes2) <= N:
+            indexes2 += [0] * (N - len(indexes2))
+        else:
+            raise IndexError
+
+        first_diff_index = 0
+        for i in xrange(N):
+            if indexes1[i] != indexes2[i]:
+                first_diff_index = i
+                break
+
+        return indexes1[first_diff_index] < indexes2[first_diff_index]
+
+    def distance(self, indexes1, indexes2):
+        """
+
+        :param indexes1: list of 0 based indexes for digging len(indexes) levels into the array
+        :param indexes2: ditto
+        :return: the distance, measured in array elements, between indexes1 and indexes2
+        """
+
+        if indexes1 == indexes2:
+            return 0
+
+        # make sure indexes1 represents earliest index
+        if self.is_first(indexes2,indexes1):
+            indexes1, indexes2 = (indexes2, indexes1)
+
+        # pad with 0s so their len == _depth
+        N = self.get_depth()
+        if len(indexes1) <= N:
+            indexes1 += [0] * (N - len(indexes1))
+        else:
+            raise IndexError
+
+        if len(indexes2) <= N:
+            indexes2 += [0] * (N - len(indexes2))
+        else:
+            raise IndexError
+
+        first_diff_index = 0
+        for i in xrange(N):
+            if indexes1[i] != indexes2[i]:
+                first_diff_index = i
+                break
+
+
+        if first_diff_index == N-1:
+            #base case
+            return abs(indexes1[-1] - indexes2[-1])
+        else:
+            #recurse
+            distance = 0
+            temp_start_index = indexes1[:]
+            for i in xrange(indexes1[first_diff_index],indexes2[first_diff_index]+1):
+
+                if indexes2[first_diff_index] == i:
+                    temp_end_index = indexes2[:]
+                else:
+                    temp_end_index = temp_start_index[:]
+                    # max out all indexes greater than first_diff_index
+
+                    temp_subarray_indexes = [i]
+                    for j in xrange(first_diff_index+1,N):
+                        temp_end_index[j] = self.sub_array_length(temp_subarray_indexes) - 1
+                        temp_subarray_indexes += [temp_end_index[j]]
+                distance += self.distance(temp_start_index,temp_end_index)
+                temp_start_index[first_diff_index] = i + 1
+                # set all indexes greater than first_diff_index to zero because you've moved on to the next section
+                for j in xrange(first_diff_index+1,N):
+                    temp_start_index[j] = 0
+
+            return distance + (indexes2[first_diff_index] - indexes1[first_diff_index])
+
+    def sub_array_length(self, indexes=None, until_last_nonempty=False):
         """
         :param indexes:  a list of 0 based indexes, for digging len(indexes) levels into the array
+        :param until_last_nonempty_section: True if you want to return the length of the last of the last nonempty (super-section, section, segment)
         :return: The length of the array at the provided index
         """
         if indexes is None:
             indexes = []
         a = self._store
-        if len(indexes) == 0:
+        if len(indexes) == 0 and not until_last_nonempty:
             return len(a)
         for i in range(0, len(indexes)):
             if indexes[i] > len(a) - 1:
                 return None
             a = a[indexes[i]]
         try:
-            result = len(a)
+            if until_last_nonempty and len(a) > 0 and type(a[-1]) == list:  # and not at end of `a`
+                curr_result = len(a)
+                while self.sub_array_length(indexes + [curr_result - 1]) == 0 and curr_result > 0:
+                    curr_result -= 1
+                result = curr_result
+            else:
+                result = len(a)
         except TypeError:
             result = 0
         return result
@@ -285,7 +381,7 @@ class JaggedArray(object):
 
     def normalize(self, terminal_depth=None, _cur=None, depth=1):
         """
-        :param terminal_depth: The desired depth before whcih everything should be arrays
+        :param terminal_depth: The desired depth before which everything should be arrays
         :return: Bool if there were any actual modifications made or not. 
         Normalizes the array so on any given depth, there are either arrays (incl empty) or primitives, not both.
         e.g. [[], ""] becomes [[], []]
@@ -311,8 +407,7 @@ class JaggedArray(object):
                     normalized = normalized or res
         return normalized
 
-
-
+    # todo: move to JaggedTextArray?
     def _upsize(self, _cur=None):
         """
         Returns a jagged array for text which restructures the content of text
@@ -331,6 +426,7 @@ class JaggedArray(object):
                 new_text.append(self._upsize(segment))
         return new_text
 
+    # todo: move to JaggedTextArray?
     def _downsize(self, _cur=None):
         """
         Returns a jagged array for text which restructures the content of text
@@ -341,6 +437,9 @@ class JaggedArray(object):
         if _cur is None:
             self._store = self._downsize(_cur=self._store)
             return self
+
+        if len(_cur) == 0:
+            return ""
 
         new_text = []
         for segment in _cur:
@@ -387,7 +486,7 @@ class JaggedArray(object):
 
     def flatten_to_array(self, _cur=None):
         if _cur is None:
-            if isinstance(self._store, basestring):
+            if not isinstance(self._store, list):
                 return [self._store]
             return self.flatten_to_array(_cur=self._store)
 
@@ -447,7 +546,7 @@ class JaggedTextArray(JaggedArray):
     def _wcnt(self, jta):
         """ Returns the number of words in an undecorated jagged array """
         if isinstance(jta, basestring):
-            return len(jta.split(" "))
+            return len(re.split(ur"[\s\u05be]+", jta.strip()))
         elif isinstance(jta, list):
             return sum([self._wcnt(i) for i in jta])
         else:
@@ -468,8 +567,17 @@ class JaggedTextArray(JaggedArray):
         else:
             return 0
 
+    def modify_by_function(self, func, _cur=None):
+        """ Returns the jagged array but with each terminal string processed by func"""
+        if _cur is None:
+            return self.modify_by_function(func, _cur=self._store)
+        if isinstance(_cur, basestring):
+            return func(_cur)
+        elif isinstance(_cur, list):
+            return [self.modify_by_function(func, i) for i in _cur]
+
     def flatten_to_array(self, _cur=None):
-        # Identical to superclass, but coerces to string
+        # Flatten deep jagged array to flat array
 
         if _cur is None:
             if isinstance(self._store, basestring):
@@ -492,7 +600,7 @@ class JaggedTextArray(JaggedArray):
         if _cur == None:
             self._store = self.trim_ending_whitespace(self._store)
             return self
-        if not isinstance(_cur, list): # shouldn't get here
+        if not isinstance(_cur, list):  # shouldn't get here
             return _cur
         if not len(_cur):
             return _cur

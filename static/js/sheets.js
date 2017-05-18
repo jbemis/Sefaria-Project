@@ -4,7 +4,7 @@ sjs.flags = {
 		ckfocus: false,
 	 };
 
-sjs.can_save = (sjs.can_edit || sjs.can_add);
+sjs.can_save = (sjs.can_edit || sjs.can_add || sjs.can_publish);
 
 sjs.current = sjs.current || {
 	options: {
@@ -495,7 +495,8 @@ $(function() {
 
 		$("#resetSourceTogglesToSheetGroup").click(function() {
 			$(".activeSource").removeClass("bilingual english hebrew sideBySide heLeft heRight stacked");
-
+			$("#sourceLayoutLanguageMenuItems").find(".fa-check").addClass("hidden");
+			setLanguageLayoutCheckBoxes($(".activeSource"));
 			if (sjs.can_edit) {
 				autoSave();
 			}
@@ -554,9 +555,9 @@ $(function() {
 		var group = $(this).attr("data-group");
 		if (group != "None") {
 			sjs.track.sheets("Share with Group", group);
-			var groupUrl = group.replace(/ /g, "_");
-			$("#partnerLogo").attr("src", $(this).attr("data-image")).show()
-				.closest("a").attr("href", "/partners/" + groupUrl );
+			var groupUrl = group.replace(/ /g, "-");
+			$("#groupLogo").attr("src", $(this).attr("data-image")).show()
+				.closest("a").attr("href", "/groups/" + groupUrl );
 			$("#sheetHeader").show();
 			
 			$(".groupSharing").show();
@@ -632,6 +633,20 @@ $(function() {
 
 	});
 
+	$("#removeNikkudot").click(function() {
+		var $target = $(".activeSource").find(".text").find(".he");
+		$target.html(stripNikkud($target.html()));
+		sjs.track.sheets("Remove Nikkudot");
+		autoSave();
+	});
+
+	$("#splitSourceToSegment").click(function() {
+		var $target = $(".activeSource").find(".text");
+		$($target.find(".segment")).replaceWith(function() { return '<p>'+$(this).html()+'</p>'; });
+		sjs.track.sheets("Auto Split Segments");
+		autoSave();
+	});
+
 	$("#addSourceTitle").click(function() {
 		var $target = $(".activeSource");
         var ref = normRef($target.attr("data-ref"));
@@ -664,7 +679,7 @@ $(function() {
 	if (sjs.can_edit || sjs.can_add ) {
 		CKEDITOR.disableAutoInline = true;
 		CKEDITOR.config.startupFocus = true;
-		CKEDITOR.config.extraAllowedContent = 'small; span(segment);div(oldComment)';
+		CKEDITOR.config.extraAllowedContent = 'small; span(segment, gemarra-regular, gemarra-italic, it-text); div(oldComment)';
 		CKEDITOR.config.removePlugins = 'magicline';
 
 		if ($.cookie("s2") == "true") {
@@ -789,14 +804,12 @@ $(function() {
 
 			editor.destroy();
 			$("[contenteditable]").attr("contenteditable", "false");
-
-
-		}
+		};
 
 		sjs.removeCKEditorByElement = function(el) {
 			var editor = $(el).ckeditorGet();
 			sjs.removeCKEditor({editor: editor});
-		}
+		};
 
 		sjs.initCKEditor = function(e) {
 			// Don't init again, or while sorting
@@ -816,7 +829,7 @@ $(function() {
 			$(".cke_editable").each(function() {
 				var ed = $(this).ckeditorGet();
 				sjs.removeCKEditor({editor: ed});
-			})
+			});
 
 			// Hide source controls
 			$(".sourceControlsOpen").removeClass("sourceControlsOpen");
@@ -835,7 +848,7 @@ $(function() {
 
 				});
 			}
-		var ed = $(this).ckeditorGet();
+		    var ed = $(this).ckeditorGet();
 
 			if (!$(this).hasClass('contentToAdd')) {
 
@@ -844,8 +857,6 @@ $(function() {
 					$("#lastSaved").text("Saving...");
 				});
 			}
-
-
 		};
 
 
@@ -875,6 +886,7 @@ $(function() {
 			$('.cke_editable').each(function() {
 				sjs.removeCKEditorByElement(this);
 			});
+
 		});
 	}
 
@@ -883,12 +895,12 @@ $(function() {
 		stopCkEditorContinuous();
 		var ckeSaveChain = function() {
 
-			if (editor.checkDirty() == true) {
+			if (editor.checkDirty() && !sjs.changesPending ) {
 				autoSave();
 				editor.resetDirty();
 			}
 			sjs.ckeSaveChain = setTimeout(ckeSaveChain , 10000)
-		}
+		};
 		sjs.ckeSaveChain = setTimeout(ckeSaveChain , 10000);
 	}
 
@@ -925,6 +937,8 @@ $(function() {
 	// ---------- Export Sheet to Google Drive ----------------
 	$("#exportToDrive").click(exportToDrive);
 
+
+	$("#highlightToggle").click(toggleHighlighter);
 
 	// ------- Sheet Tags --------------
 	sjs.sheetTagger.init(sjs.current.id, sjs.current.tags);
@@ -1013,7 +1027,7 @@ $(function() {
 			autoSave();
 		};
 
-		sjs.sortOptions = { 
+		sjs.sortOptions = {
 							start: sjs.sortStart,
 							stop: sjs.sortStop,
 							cancel: ':input, button, .cke_editable, #addInterface',
@@ -1050,6 +1064,9 @@ $(function() {
 
 
 		$("#sources").sortable(sjs.sortOptions);
+		if ($("#sheet").hasClass("highlightMode")) {
+			$("#sources").sortable("disable"); //disable dragging while in highlighter edit mode....
+		}
 	}
 
 
@@ -1230,10 +1247,10 @@ $(function() {
 						var categorySum = {}
 						for (var i = 0; i < data.commentary.length; i++) {
 							var c = data.commentary[i];
-							if (categorySum[c.commentator]) {
-								categorySum[c.commentator]++;
+							if (categorySum[c.collectiveTitle['en']]) {
+								categorySum[c.collectiveTitle['en']]++;
 							} else {
-								categorySum[c.commentator] = 1;
+								categorySum[c.collectiveTitle['en']] = 1;
 							}
 						}
 						var categories = [];
@@ -1254,7 +1271,7 @@ $(function() {
 
 							for (var i = 0; i < data.commentary.length; i++) {
 								var c = data.commentary[i];
-								if (categories[j] == c.commentator) {
+								if (categories[j] == c.collectiveTitle['en']) {
 									dataRefs = dataRefs + c.sourceRef + ";";
 									//continue;
 								}
@@ -1280,10 +1297,19 @@ $(function() {
 				}
 				$target.length == 0 ? buildSource($("#sources"), source, "append") : buildSource($target, source, "insert");
 				autoSave();
-				$(".contentToAdd").html('');
+				$("#addcommentDiv .contentToAdd").html('<br>');
 				$("#sheet").click();
 				//$target.next(".sheetItem").find(".comment").last().trigger("mouseup").focus();
 
+			});
+
+			$("#addcommentDiv .contentToAdd").keypress(function (e) {
+				if(isHebrew($(this).text()) && $(this).text().length > 0) {
+					$(this).addClass("he");
+				}
+				else {
+					$(this).removeClass("he");
+				}
 			});
 
 			$("#addmediaDiv").on("click", ".button", function (e) {
@@ -1353,7 +1379,8 @@ $(function() {
 				}
 				$target.length == 0 ? buildSource($("#sources"), source, "append") : buildSource($target, source, "insert");
 				autoSave();
-				$(".contentToAdd").html('');
+				$("#customTextContainer .contentToAdd.en").html('English');
+				$("#customTextContainer .contentToAdd.he").html('עברית');
 				$("#sheet").click();
 				//	$target.next(".sheetItem").find(".comment").last().trigger("mouseup").focus();
 
@@ -1379,12 +1406,16 @@ $(function() {
 				e.stopImmediatePropagation();
 			});
 
+
 			function cleanupActiveSource(target){
 				$(".inlineAddButtonIcon").removeClass("active");
 				$(".activeSource").removeClass("activeSource");
 				$("#sheetLayoutLanguageMenuItems").show();
 				$("#sourceLayoutLanguageMenuItems").hide();
 				$("#resetText").hide();
+				$("#removeNikkudot").hide();
+				$(".resetHighlighter").hide();
+				$("#splitSourceToSegment").hide();
 				$("#addSourceTitle").hide();
 				if (!$(target).hasClass('inlineAddButtonIcon')) {
 					$(".inlineAddButtonIcon").last().click();
@@ -1397,52 +1428,92 @@ $(function() {
 				$("#sourceButton").click();
 			}
 
+			function setLanguageLayoutCheckBoxes(source) {
+				if (!$(source).hasClass("hebrew") && !$(source).hasClass("bilingual") && !$(source).hasClass("english")) {
+					if (sjs.current.options.language == "hebrew") {
+						$("#sourceLayoutLanguageMenuItems").find(".hebrew .fa-check").removeClass("hidden");
+					}
+					else if (sjs.current.options.language == "bilingual") {
+						$("#sourceLayoutLanguageMenuItems").find(".bilingual .fa-check").removeClass("hidden");
+						$("#sourceLayoutLanguageMenuItems").find("#layoutToggleGroup").removeClass("disabled");
+					}
+					else if (sjs.current.options.language == "english") {
+						$("#sourceLayoutLanguageMenuItems").find(".english .fa-check").removeClass("hidden");
+					}
+
+					if (sjs.current.options.layout == "stacked") {
+						$("#sourceLayoutLanguageMenuItems").find(".stacked .fa-check").removeClass("hidden")
+					}
+					else if (sjs.current.options.layout == "sideBySide") {
+						$("#sourceLayoutLanguageMenuItems").find(".sideBySide .fa-check").removeClass("hidden");
+						$("#sourceLayoutLanguageMenuItems").find("#sideBySideToggleGroup").removeClass("disabled");
+					}
+
+					if (sjs.current.options.langLayout == "heLeft") {
+						$("#sourceLayoutLanguageMenuItems").find(".heLeft .fa-check").removeClass("hidden")
+					}
+					else if (sjs.current.options.langLayout == "heRight") {
+						$("#sourceLayoutLanguageMenuItems").find(".heRight .fa-check").removeClass("hidden")
+					}
+				}
+
+				else {
+					if ($(source).hasClass("hebrew")) {
+						$("#sourceLayoutLanguageMenuItems").find(".hebrew .fa-check").removeClass("hidden");
+					}
+					else if ($(source).hasClass("bilingual")) {
+						$("#sourceLayoutLanguageMenuItems").find(".bilingual .fa-check").removeClass("hidden");
+						$("#sourceLayoutLanguageMenuItems").find("#layoutToggleGroup").removeClass("disabled");
+					}
+					else if ($(source).hasClass("english")) {
+						$("#sourceLayoutLanguageMenuItems").find(".english .fa-check").removeClass("hidden");
+					}
+
+					if ($(source).hasClass("stacked")) {
+						$("#sourceLayoutLanguageMenuItems").find(".stacked .fa-check").removeClass("hidden")
+					}
+					else if ($(source).hasClass("sideBySide")) {
+						$("#sourceLayoutLanguageMenuItems").find(".sideBySide .fa-check").removeClass("hidden");
+						$("#sourceLayoutLanguageMenuItems").find("#sideBySideToggleGroup").removeClass("disabled");
+					}
+
+					if ($(source).hasClass("heLeft")) {
+						$("#sourceLayoutLanguageMenuItems").find(".heLeft .fa-check").removeClass("hidden")
+					}
+					else if ($(source).hasClass("heRight")) {
+						$("#sourceLayoutLanguageMenuItems").find(".heRight .fa-check").removeClass("hidden")
+					}
+				}
+
+			}
+
 			$("#sheet").on("click", ".sheetItem", function (e) {
 			//clicked on a sheet item
 				if ($(e.target).hasClass("inlineAddButtonIcon")) return;
 				if (!$(".readerApp").hasClass("multiPanel")) return; //prevent active source on mobile
 
-			cleanupActiveSource(e.target);
-			$(this).addClass("activeSource");
-			$("#sheetLayoutLanguageMenuItems").hide();
-			$("#sourceLayoutLanguageMenuItems").show();
-			$("#resetText").show();
-			$("#addSourceTitle").show();
-			//$(this).hasClass("source") ? $("#connectionButton").css('display', 'inline-block') : $("#connectionButton").hide();
+				cleanupActiveSource(e.target);
+				$(this).addClass("activeSource");
+				$("#sheetLayoutLanguageMenuItems").hide();
+				$("#sourceLayoutLanguageMenuItems").show();
+				$("#resetText").show();
+				$("#addSourceTitle").show();
+				$("#removeNikkudot").show();
+				$(".resetHighlighter").show();
+				$("#splitSourceToSegment").show();
+				//$(this).hasClass("source") ? $("#connectionButton").css('display', 'inline-block') : $("#connectionButton").hide();
 
-			//set checkboxes for language/layout menus for active source
-			if ($(this).hasClass("hebrew")) {
-				$("#sourceLayoutLanguageMenuItems").find(".hebrew .fa-check").removeClass("hidden");
-			}
-			else if ( $(this).hasClass("bilingual") ) {
-			 $("#sourceLayoutLanguageMenuItems").find(".bilingual .fa-check").removeClass("hidden");
-			 $("#sourceLayoutLanguageMenuItems").find("#layoutToggleGroup").removeClass("disabled");
-			}
-			else if ( $(this).hasClass("english") ) {
-				$("#sourceLayoutLanguageMenuItems").find(".english .fa-check").removeClass("hidden");
-			}
+				//set checkboxes for language/layout menus for active source
+				setLanguageLayoutCheckBoxes(e.target);
 
-			if ($(this).hasClass("stacked")) {
-				$("#sourceLayoutLanguageMenuItems").find(".stacked .fa-check").removeClass("hidden")
-			}
-			else if ( $(this).hasClass("sideBySide") ) {
-				$("#sourceLayoutLanguageMenuItems").find(".sideBySide .fa-check").removeClass("hidden");
-			    $("#sourceLayoutLanguageMenuItems").find("#sideBySideToggleGroup").removeClass("disabled");
-			}
-
-			if ($(this).hasClass("heLeft")){
-				$("#sourceLayoutLanguageMenuItems").find(".heLeft .fa-check").removeClass("hidden")
-			}
-			else if ($(this).hasClass("heRight")){
-				$("#sourceLayoutLanguageMenuItems").find(".heRight .fa-check").removeClass("hidden")
-			}
-
-			if (!($(this).hasClass("source"))) {
-				$("#resetText").hide();
-				$("#addSourceTitle").hide();
-				$("#sourceLayoutLanguageMenuItems").hide();
-			}
-		});
+				if (!($(this).hasClass("source"))) {
+					$("#resetText").hide();
+					$("#addSourceTitle").hide();
+					$("#removeNikkudot").hide();
+					$("#splitSourceToSegment").hide();
+					$("#sourceLayoutLanguageMenuItems").hide();
+				}
+			});
 
 			$("#sheet").click();
 		}
@@ -1588,7 +1659,7 @@ $(function() {
 	});
 
 	function changeSharing() {
-			if ($("#sourceSheetGroupSelect").val()=="None"||($("#sourceSheetGroupSelect").val() == null)) {
+			if ($("#sourceSheetGroupSelect").val() == "None" || ($("#sourceSheetGroupSelect").val() == null)) {
 
 				switch ($("#sourceSheetShareSelect").val()) {
 
@@ -1666,22 +1737,29 @@ $(function() {
 	}
 
 	$("#sourceSheetShareSelect").change(function() {
-			changeSharing();
+		changeSharing();
 	});
 
 	$("#sourceSheetGroupSelect").change(function() {
-			changeSharing();
-			if ($(this).val()!="None") {
-				var groupUrl = $(this).val().replace(/ /g, "_");
-				$("#partnerLogo").attr("src", $("#sourceSheetGroupSelect option:selected").attr("data-image")).show()
-					.closest("a").attr("href", "/partners/" + groupUrl);
-				$("#sheetHeader").show();
-				$(".groupName").text($(this).val());
+		changeSharing();
+		if ($(this).val()!="None") {
+			var $el = $("#sourceSheetGroupSelect option:selected");
+			var groupUrl = $(this).val().replace(/ /g, "-");
+			$("#groupLogo").attr("src", $el.attr("data-image")).show()
+				.closest("a").attr("href", "/groups/" + groupUrl);
+			$("#sheetHeader").show();
+			$(".groupName").text($(this).val());
+			if (parseInt($el.attr("data-can-publish"))) {
+				$("#sourceSheetsAccessOptions").show();
+			} else {
+				$("#sourceSheetsAccessOptions").hide();
 			}
-			else {
-				$("#sheetHeader").hide();
-				$(".groupName").text("your group");
-			}
+		}
+		else {
+			$("#sheetHeader").hide();
+			$(".groupName").text("your group");
+			$("#sourceSheetsAccessOptions").show();
+		}
 	});
 
 
@@ -1691,9 +1769,6 @@ $(function() {
 
 		autoSave();
 		sjs.alert.flash("Sharing settings saved.")
-
-
-
 	});
 
 
@@ -1719,6 +1794,166 @@ $(function() {
 		autoSave();
 
 	});
+
+	$("#highlightMenu .optionsMenu").on('click', '.resetHighlighter', function() {
+		var curHighlighter = $(".activeSource").find(".highlighter");
+		var curText = $(".activeSource").find(".text");
+		curHighlighter.find(".en").html("<div class='highlighterSegment'>"+curText.find(".en").html().stripHtml()+"</div>");
+		curHighlighter.find(".he").html("<div class='highlighterSegment'>"+curText.find(".he").html().stripHtml()+"</div>");
+		autoSave();
+
+
+	});
+
+	$("#highlightMenu .optionsMenu").on('click', '.segmentedContinuousToggle', function() {
+
+		if ($(this).text() == "Continuous") {
+			$(this).text('Segmented');
+			$('.highlighterSegment').css({'display': 'block'});
+	}
+
+		else /*view mode */ {
+			$(this).text('Continuous');
+			$('.highlighterSegment').css({'display': 'inline'});
+		}
+
+	});
+
+	$(".highlighterTagWindow").on('click','.close-button', function() {closeHighlighterTagWindow()});
+
+
+
+	function saveNewlyCreatedTag(newTagName,newTagColor) {
+		if (newTagName !== "Create New" && newTagName !== "") {
+			$(".sheetHighlighterTags").append('<div class="splitHighlighterSegment" data-tagname="' + newTagName + '"><div class="colorSwatch active" style="background-color: ' + newTagColor + '"></div><div class="tagName">' + newTagName + '</div><div class="editCheckToggle">✎</div></div>');
+			$(".highlighterFilterTags").append('<div class="highlightFilterSelection"><input type="checkbox" name="highlighterFilterTags" id ="'+newTagName+'_highlighterTag" value="' + newTagName + '" checked="checked"> <label for="'+newTagName+'_highlighterTag" style="background-color: ' + newTagColor + '">' + newTagName + '</label></div>');
+			resetSplitHighlighterSegment();
+			resetHighlighterFilterTags();
+			autoSave();
+		}
+
+		$(".createNewHighlighterTag .tagName").text("Create New")
+	}
+
+
+	$(".createNewHighlighterTag .tagName").keydown(function(e){
+		if (e.which == 13) {
+      e.preventDefault();
+			$(".createNewHighlighterTag .tagName").blur();
+			$(this).text('');
+		}
+	});
+
+	$(".createNewHighlighterTag .tagName").focus(function(e){
+		if ($(this).text()=="Create New") {
+			$(this).text('');
+		}
+	});
+
+	$(".createNewHighlighterTag .tagName").focusout(function(e){
+      e.preventDefault();
+			saveNewlyCreatedTag($(e.target).text(),$(e.target).siblings('.colorSwatch.active').css('background-color'));
+			$('.createNewHighlighterTag .colorSwatch').removeClass('active');
+			$('.createNewHighlighterTag .colorSwatch').css('display', '');
+			$('.createNewHighlighterTag .colorSwatch').eq($('.splitHighlighterSegment').length % 7).addClass('active'); //select the next color in the list
+
+	});
+
+	$(".createNewHighlighterTag").on('click', '.colorSwatch', function() {
+		if ($('.createNewHighlighterTag .colorSwatch:visible').length > 1) {
+			$(".createNewHighlighterTag .colorSwatch").removeClass('active');
+			$(this).addClass('active');
+			$(".createNewHighlighterTag .colorSwatch").hide();
+			$(".createNewHighlighterTag .colorSwatch.active").css("display","inline-block");
+			$(this).siblings('.tagName').eq(0).show();
+		}
+		else {
+			$(".createNewHighlighterTag .colorSwatch").css("display","inline-block");
+			$(this).siblings('.tagName').eq(0).hide();
+		}
+	});
+
+	$(".highlighterTagWindow").on('click', '.save', function() {
+		restoreSelection(sjs.selection);
+		if ($(".splitHighlighterSegment.active").length == 0) {
+				restoreSelectedText(window.getSelection());
+			}
+		else {
+			splitSelectedText(window.getSelection(), $(".splitHighlighterSegment.active").find('.tagName').text(), $(".splitHighlighterSegment.active").find('.colorSwatch').css('background-color'));
+		}
+	closeHighlighterTagWindow();
+	});
+
+
+	function restoreSelectedText(selection) {
+		if (selection.anchorOffset < 0) return;
+		var curHighlighterSegment = $(selection.focusNode);
+		if ($(curHighlighterSegment[0]).hasClass('highlighterSegment')) { //firefox returns this if selection object already contains a tag
+			$(curHighlighterSegment[0]).css('background-color', '').removeAttr('data-tag','');
+		}
+		else {
+			$(curHighlighterSegment.parent()).css('background-color', '').removeAttr('data-tag','');
+		}
+		mergeSameClassAdjacentHighlighterSegments();
+	}
+
+	function mergeSameClassAdjacentHighlighterSegments() {
+		$( ".highlighterSegment" ).each(function( index ) {
+			if (($(this).attr('data-tag')) == $(this).next().attr('data-tag') && $(this).next().text() != '')  {
+				var textToPrepend = $(this).text();
+				var nextText = $(this).next().text();
+				textToPrepend = textToPrepend + nextText;
+				$(this).next().text(textToPrepend);
+				$(this).remove();
+			}
+		});
+		$(".highlighterSegment:empty").remove();
+		autoSave();
+	}
+
+	function splitSelectedText(selection, highlighterTag, tagBgColor) {
+			var selectedRange = selection;
+			var firstSelectedCharacter;
+			var lastSelectedCharacter;
+			if (selectedRange.anchorOffset < selectedRange.focusOffset) {
+				firstSelectedCharacter = selectedRange.anchorOffset;
+				lastSelectedCharacter = selectedRange.focusOffset;
+			}
+			else {
+				firstSelectedCharacter = selectedRange.focusOffset;
+				lastSelectedCharacter = selectedRange.anchorOffset;
+			}
+
+
+			var curHighlighterSegment = $(selectedRange.focusNode);
+
+			if ($(curHighlighterSegment[0]).hasClass('highlighterSegment')) { //firefox returns this if selection object already contains a tag
+				$(curHighlighterSegment[0]).css('background-color', tagBgColor).attr('data-tag', highlighterTag);
+			}
+
+			else {
+
+				if (curHighlighterSegment.parent().hasClass('tagName')) return;
+				var textBefore = curHighlighterSegment.text().slice(0, firstSelectedCharacter);
+				var selectedText = curHighlighterSegment.text().slice(firstSelectedCharacter, lastSelectedCharacter);
+				var textAfter = curHighlighterSegment.text().slice(lastSelectedCharacter);
+
+				$(curHighlighterSegment.parent()).after("<div class='highlighterSegment'>" + textAfter + "</div>");
+				$(curHighlighterSegment.parent()).after("<div class='highlighterSegment' style='background-color: " + tagBgColor + "' data-tag='" + highlighterTag + "'>" + selectedText + "</div>");
+				$(curHighlighterSegment.parent()).text(textBefore);
+			}
+			resetHighlighterInteractivity();
+			closeHighlighterTagWindow();
+			$(".highlighterSegment:empty").remove();
+			mergeSameClassAdjacentHighlighterSegments();
+	}
+
+	resetSplitHighlighterSegment();
+
+
+	resetHighlighterInteractivity();
+
+	resetHighlighterFilterTags();
 
 
 	$(".moveSourceRight").live("click", function() {
@@ -1922,8 +2157,8 @@ $(function() {
 
 	// Add All Connections 
     function SortBySourceRef(x,y) {
-		  if (x.commentator < y.commentator) return -1;
-		  if (x.commentator > y.commentator) return 1;
+		  if (x.collectiveTitle['en'] < y.collectiveTitle['en']) return -1;
+		  if (x.collectiveTitle['en'] > y.collectiveTitle['en']) return 1;
 		  if (x.anchorVerse < y.anchorVerse) return -1;
 		  if (x.anchorVerse > y.anchorVerse) return 1;
 		  if (x.commentaryNum < y.commentaryNum) return -1;
@@ -1955,10 +2190,10 @@ $(function() {
 				var categorySum = {}
 				for (var i = 0; i < data.commentary.length; i++) {
 					var c = data.commentary[i];
-					if (categorySum[c.commentator]) {
-						categorySum[c.commentator]++;
+					if (categorySum[c.collectiveTitle['en']]) {
+						categorySum[c.collectiveTitle['en']]++;
 					} else {
-						categorySum[c.commentator] = 1;
+						categorySum[c.collectiveTitle['en']] = 1;
 					}
 				}
 				var categories = [];
@@ -1978,7 +2213,7 @@ $(function() {
 					var count = 0;
 					for (var i = 0; i < data.commentary.length; i++) {
 						var c = data.commentary[i];
-						if ($.inArray(c.commentator, categoriesToAdd) == -1) {
+						if ($.inArray(c.collectiveTitle['en'], categoriesToAdd) == -1) {
 							continue;
 						}
 						var source = {
@@ -2014,7 +2249,8 @@ $(function() {
 			$("#publishPromptModal #prompt").hide();
 			$("#publishPromptModal #published").show();
 			sjs.current.promptedToPublish = Date();
-			$("#sharePublic").trigger("click");
+			$("#sourceSheetShareSelect").val('public');
+			autoSave();
 			sjs.track.sheets("Publish Prompt Accept");
 		});
 		$("#publishPromptModal .later").click(function(){
@@ -2063,8 +2299,43 @@ $(function() {
 			break;
 	}
 
-}); // ------------------ End DOM Ready  ------------------
+	// fix for touchscreens to access hover elements (in particular menubar)
+  $('*').on('touchstart', function () {
+		$(this).trigger('hover');
+	}).on('touchend', function () {
+		$(this).trigger('hover');
+	});
 
+// fix for menu/edit bar jumping on iOS when keyboard loads. A bit of a jerky effect but the best that seems possible now. There's definitely a way to optimize this more.
+if( navigator.userAgent.match(/iPhone|iPad|iPod/i) ) {
+	function updateSheetsEditNavTopPosOnScroll() {
+		$('.sheetsEditNavTop').css('marginTop', $(window).scrollTop()-54 + 'px');
+	}
+
+	$(document)
+		.on('focus', '.cke_editable_inline', function(e) {
+			// Position sheetsEditNavTop absolute and bump it down to the scrollPosition
+			$('.sheetsEditNavTop').css({
+				marginTop: $(window).scrollTop()-54 + 'px',
+			});
+			$(document).scroll(updateSheetsEditNavTopPosOnScroll);
+		})
+		.on('touchstart', '*:not(.cke_editable_inline)', function(e) {
+			if ($(".cke_editable").length == 0) {
+				$('.sheetsEditNavTop').css({
+					position: 'fixed',
+					top: '54px',
+					marginTop: 0
+				});
+				$(document).off('scroll', updateSheetsEditNavTopPosOnScroll);
+			}
+		});
+
+}
+
+
+
+}); // ------------------ End DOM Ready  ------------------
 
 function addSource(q, source, appendOrInsert) {
 	// Add a new source to the DOM.
@@ -2098,10 +2369,10 @@ function addSource(q, source, appendOrInsert) {
 		};
 	}
 
-	var addedByMe = (source && source.addedBy && source.addedBy == sjs._uid) || 
+	var addedByMe = (source && source.addedBy && source.addedBy == sjs._uid) ||
 					(!source && sjs.can_add);
 
-	var attributionLink = (source && "userLink" in source ? "<div class='addedBy'>Added by " + source.userLink + "</div>" : 
+	var attributionLink = (source && "userLink" in source ? "<div class='addedBy'>Added by " + source.userLink + "</div>" :
 							addedByMe && !source ? "<div class='addedBy'>Added by " + sjs._userLink + "</div>" : "");
 
 	if (source && "node" in source) {
@@ -2112,14 +2383,17 @@ function addSource(q, source, appendOrInsert) {
 	}
 
 	var attributionData = attributionDataString((source ? source.addedBy : null), !source, "source");
-	
+
 	var enRef = badRef == true ? source.ref : humanRef(q.ref);
 	var heRef = source && source.text ? source.heRef : "";
-	
+
 	var refLink = badRef == true ? "#" : "/"+makeRef(q).replace(/'/g, "&apos;");
 
 
-	var newsource = "<li " + attributionData + "data-ref='" + enRef.replace(/'/g, "&apos;") + "'" + " data-heRef='" + heRef.replace(/'/g, "&apos;") + "'" + " data-node='" + node + "'>" +"<div class='sourceNumber he'></div><div class='sourceNumber en'></div>" +"<div class='customTitle'></div>" +"<div class='he'>" + "<span class='title'>" +"<a class='he' href='" + refLink + "' target='_blank'><span class='ref'></span>" + heRef.replace(/\d+(\-\d+)?/g, "").replace(/([0-9][b|a]| ב| א):.+/,"$1") + " <span class='ui-icon ui-icon-extlink'></a>" + "</span>" +"<div class='text'>" +"<div class='he'>" + (source && source.text ? source.text.he : "") + "</div>" +"</div>" +"</div>" +"<div class='en'>" +"<span class='title'>" +"<a class='en' href='" + refLink + "' target='_blank'><span class='ref'>" + enRef.replace(/([0-9][b|a]| ב| א):.+/,"$1") + "</span> <span class='ui-icon ui-icon-extlink'></a>" +"</span>" +"<div class='text'>" +"<div class='en'>" + (source && source.text ? source.text.en : "") + "</div>" + "</div>" +"</div>" + "<div class='clear'></div>" + attributionLink + appendInlineAddButton() + "</li>";
+	var newsource = "<li " + attributionData + "data-ref='" + enRef.replace(/'/g, "&apos;") + "'" + " data-heRef='" + heRef.replace(/'/g, "&apos;") + "'" + " data-node='" + node + "'>"
+		+"<div class='sourceNumber he'></div><div class='sourceNumber en'></div>"
+		+"<div class='customTitle'></div>"
+		+"<div class='he'>" + "<span class='title'>" +"<a class='he' href='" + refLink + "' target='_blank'><span class='ref'></span>" + heRef.replace(/\d+(\-\d+)?/g, "").replace(/([0-9][b|a]| ב| א):.+/,"$1") + " </a>" + "</span>" +"<div class='text'>" +"<div class='he'>" + (source && source.text ? source.text.he : "") + "</div>" +"</div>" + "<div class='highlighter'><div class='he'></div></div>" + "</div>" + "<div class='en'>" +"<span class='title'>" +"<a class='en' href='" + refLink + "' target='_blank'><span class='ref'>" + enRef.replace(/([0-9][b|a]| ב| א):.+/,"$1") + "</span> </a>" +"</span>" +"<div class='text'>" +"<div class='en'>" + (source && source.text ? source.text.en : "") + "</div>" + "</div>" + "<div class='highlighter'><div class='en'></div></div>" +"</div>" + "<div class='clear'></div>" + attributionLink + appendInlineAddButton() + "</li>";
 
 	if (appendOrInsert == "append") {
 		$("#sources").append(newsource);
@@ -2254,6 +2528,8 @@ function loadSource(data, $target, optionStr) {
 		$("html, body").animate({scrollTop: top}, 300);
 	}
 
+	if ($("#sheet").hasClass("highlightMode")) { fillEmptyHighlighterSegments() }
+
 	autoSave();
 }
 
@@ -2276,8 +2552,6 @@ function readSheet() {
 		sheet.promptedToPublish = sjs.current.promptedToPublish || false;
 	}
 
-
-
 	sheet.title    = $("#title").html();
 	sheet.sources  = readSources($("#sources"));
 	sheet.options  = {};
@@ -2289,10 +2563,8 @@ function readSheet() {
 		sheet.attribution = $("#author").html();
 	}
 
-
 	if (sjs.assignment_id) sheet.assignment_id = sjs.assignment_id;
 	if (sjs.assigner_id) sheet.assigner_id = sjs.assigner_id;
-
 
 	if (sjs.can_add) {
 		// Adders can't change saved options
@@ -2307,9 +2579,10 @@ function readSheet() {
 		sheet.options.layout        = $("#sheet").hasClass("stacked") ? "stacked" : "sideBySide";
 		sheet.options.langLayout    = $("#sheet").hasClass("heLeft") ? "heLeft" : "heRight";
 		sheet.options.divineNames   = $(".divineNamesOption .fa-check").not(".hidden").parent().attr("id");
+		sheet.options.highlightMode = $("#sheet").hasClass("highlightMode") ? 1 : 0;
 	}
 
-	if (sjs.is_owner) {
+	if (sjs.is_owner || sjs.can_publish) {
 		switch ($("#sharingType").data("sharing") || $("#sharingModal input[type='radio'][name='sharingOptions']:checked").val() ) {
 
 			case 'private':
@@ -2362,6 +2635,18 @@ function readSheet() {
 				break;
 
 		}
+
+		if ($(".sheetHighlighterTags").first().children()) {
+			sheet.highlighterTags = [];
+			$(".sheetHighlighterTags").first().children().each(function( i ) {
+				sheet.highlighterTags[i] = {};
+				var currentName = $(this).find('.tagName').text();
+				var currentColor = $(this).find('.colorSwatch').css('background-color');
+				sheet.highlighterTags[i].name = currentName;
+				sheet.highlighterTags[i].color = currentColor;
+
+			});
+		}
 	}
 
 	else {
@@ -2409,6 +2694,27 @@ function readSource($target) {
 		source["text"] = {en: $target.find(".text").find(".en").html(), 
 						  he: $target.find(".text").find(".he").html()};
 
+		if ($target.find(".highlighter").find(".en").html() != "" || $target.find(".highlighter").find(".he").html() != "") {
+			source["highlighter"] = {en: [], he: []};
+			$target.find(".highlighter").find(".en").find(".highlighterSegment").each(function(i){
+
+				source.highlighter.en[i] = {};
+				var currenttext = $(this).text();
+				var currenttag = $(this).attr('data-tag');
+
+
+				source.highlighter.en[i].text = currenttext;
+				source.highlighter.en[i].tag = currenttag;
+			});
+
+			$target.find(".highlighter").find(".he").find(".highlighterSegment").each(function(i){
+				source.highlighter.he[i] = {};
+				var currenttext = $(this).text();
+				var currenttag = $(this).attr('data-tag');
+				source.highlighter.he[i].text = currenttext;
+				source.highlighter.he[i].tag = currenttag;
+			});
+		}
 		//Set source layout
 		if ($target.hasClass("stacked")) {
 			var sourceLayout = "stacked"
@@ -2566,7 +2872,6 @@ function handleSave() {
 	var sheet = readSheet();
 	saveSheet(sheet, true);
 	sjs.track.sheets("Save New Sheet");
-
 }
 
 
@@ -2595,7 +2900,6 @@ function saveSheet(sheet, reload) {
 			startPollingIfNeeded(); // Start or stop polling if collab/group status has changed
 			promptToPublish();      // If conditions are right, prompt to publish
 			$("#lastSaved").text("All changes saved in Sefaria")
-
 		} 
 
 		if ("error" in data) {
@@ -2634,6 +2938,7 @@ function buildSheet(data){
 	if (data.options.numbered) { $("#numbered").trigger("click"); } 
 	if (data.options.bsd)      { $("#bsd").trigger("click"); } 
 	if (data.options.boxed)    { $("#boxed").trigger("click"); } 
+	if (data.options.highlightMode)    { $("#highlightToggle").trigger("click"); }
 	if (data.options.assignable)    { $("#makeSheetAssignableButton").trigger("click"); }
 	else {$("#StopCollectingAssignmentsButton").trigger("click");}
 
@@ -2684,13 +2989,27 @@ function buildSheet(data){
 		$(".groupSharing").show();
 		$(".groupName").text(data.group);
 		$(".individualSharing").hide();
-		var groupUrl = data.group.replace(/ /g, "_");
-		var groupImage = $(".groupOption[data-group='"+ data.group + "']").attr("data-image"); 
-		$("#partnerLogo").attr("src", groupImage).show();
 		$("#sourceSheetGroupSelect").val(data.group);
+		var groupUrl = data.group.replace(/ /g, "-");
+		var $el = $("#sourceSheetGroupSelect option:selected");
+		var groupImage = $el.attr("data-image"); 
+
+		$("#groupLogo").attr("src", groupImage).show();
+		if (parseInt($el.attr("data-can-publish")) || sjs.can_publish) {
+			$("#sourceSheetsAccessOptions").show();
+		} else {
+			$("#sourceSheetsAccessOptions").hide();
+		}
 	} else {
 		$(".groupSharing").hide();
+		$("#sourceSheetsAccessOptions").show();
 		$(".individualSharing").show();
+	}
+
+	if (sjs.is_owner) {
+		$("#sourceSheetGroupOptions").show();
+	} else {		
+		$("#sourceSheetGroupOptions").hide();
 	}
 
 
@@ -2704,6 +3023,21 @@ function buildSheet(data){
 
 	$("#sources").css("min-height","");
 
+	if ("highlighterTags" in data) {
+		$(".sheetHighlighterTags").empty();
+		for (var i = 0; i < data.highlighterTags.length; i++) {
+			$(".sheetHighlighterTags").append('<div class="splitHighlighterSegment" data-tagname="'+data.highlighterTags[i].name+'"><div class="colorSwatch active" style="background-color: '+data.highlighterTags[i].color+'"></div>'
+						+"<div class='colorSwatch' style='background-color: #bd9eb6'></div>"
+						+"<div class='colorSwatch' style='background-color: #afcab8'></div>"
+						+"<div class='colorSwatch' style='background-color: #e5dabd'></div>"
+						+"<div class='colorSwatch' style='background-color: #bd9796'></div>"
+						+"<div class='colorSwatch' style='background-color: #a4b7de'></div>"
+						+"<div class='colorSwatch' style='background-color: #e8dde5'></div>"
+						+"<div class='colorSwatch' style='background-color: #d2ddc9'></div>"
+				+'<div class="tagName">'+data.highlighterTags[i].name+'</div><div class="editCheckToggle">✎</div></div>');
+			$(".highlighterFilterTags").append('<div class="highlightFilterSelection"><input type="checkbox" name="highlighterFilterTags" id="'+data.highlighterTags[i].name+'_highlighterTag" value="'+data.highlighterTags[i].name+'" checked="checked"> <label for="'+ data.highlighterTags[i].name +'_highlighterTag" style="background-color: '+data.highlighterTags[i].color+'">'+data.highlighterTags[i].name+'</label></div>');
+		}
+	}
 }
 	
 
@@ -2746,6 +3080,38 @@ function buildSource($target, source, appendOrInsert) {
 			$(".sheetItem").last().addClass("hasCustom");
 		}
 
+		if (source.highlighter) {
+			var enHighlighterHTML = '';
+			var heHighlighterHTML = '';
+			for (var i = 0; i < source.highlighter.en.length; i++) {
+				var highlighterTagHTML = source.highlighter.en[i].tag ? ' data-tag="'+ source.highlighter.en[i].tag +'" ': '';
+				var highlighterTagColorHTML = '';
+				if (highlighterTagHTML != '') {
+					var highlighterTagColor = sjs.current.highlighterTags.filter(function(tag) { return source.highlighter.en[i].tag == tag.name; })[0].color;
+					highlighterTagColorHTML = 'style="background-color: '+highlighterTagColor+'"';
+				}
+
+
+				enHighlighterHTML = enHighlighterHTML + '<div class="highlighterSegment" '+ highlighterTagColorHTML + highlighterTagHTML  +'>'+source.highlighter.en[i].text+'</div>'
+			}
+
+			for (var i = 0; i < source.highlighter.he.length; i++) {
+				var highlighterTagHTML = source.highlighter.he[i].tag ? ' data-tag="'+ source.highlighter.he[i].tag +'" ': '';
+				var highlighterTagColorHTML = '';
+				if (highlighterTagHTML != '') {
+					var highlighterTagColor = sjs.current.highlighterTags.filter(function(tag) { return source.highlighter.he[i].tag == tag.name; })[0].color;
+					highlighterTagColorHTML = 'style="background-color: '+highlighterTagColor+'"';
+				}
+
+
+				heHighlighterHTML = heHighlighterHTML + '<div class="highlighterSegment" '+ highlighterTagColorHTML + highlighterTagHTML  +'>'+source.highlighter.he[i].text+'</div>'
+			}
+
+			$(".highlighter .en").last().html(enHighlighterHTML);
+			$(".highlighter .he").last().html(heHighlighterHTML);
+		}
+
+
 	} else if ("comment" in source) {
 		var attributionData = attributionDataString(source.addedBy, source.isNew, "commentWrapper");
 		var commentHtml = "<div " + attributionData + " data-node='" + source.node + "'>" +
@@ -2757,7 +3123,7 @@ function buildSource($target, source, appendOrInsert) {
 
 					var commentHtml = "<div " + attributionData + " data-node='" + source.node + "'><span class='commentIcon'><i class='fa fa-comment-o fa'></i></span>" +
 						("userLink" in source ? "<div class='addedBy s2AddedBy'>" + source.userLink + "</div>" : "")	+
-						"<div class='comment " + (sjs.loading ? "" : "new") + "'>" + source.comment + "</div>"
+						"<div class='comment " + (isHebrew(source.comment) ? "he " : "") + (sjs.loading ? "" : "new") + " '>" + source.comment + "</div>"
 
 						  "</div>";
 
@@ -3064,7 +3430,13 @@ function pollForUpdates() {
 		if ("error" in data) {
 			sjs.alert.flash(data.error);
 		} else if (data.modified) {
-			rebuildUpdatedSheet(data);
+				if ($(".sheetItem").find(".cke_editable").length) {
+					sjs.changesPending = true;
+				  $("#lastSaved").text('Changes Pending...');
+				}
+				else {
+					rebuildUpdatedSheet(data);
+				}
 		}
 	})
 }
@@ -3073,6 +3445,7 @@ function pollForUpdates() {
 function startPolling() {
 	// Start a timer to poll server for changes to this sheet
 	stopPolling();
+	sjs.changesPending = false;
 	sjs.pollingStopped = false;
 	var pollChain = function() {
 		pollForUpdates();
@@ -3124,21 +3497,58 @@ function rebuildUpdatedSheet(data) {
 	}
 
 	sjs.alert.flash("Sheet updated.");
-	if ($(".cke_editable").length) {
+	if ($(".sheetItem").find(".cke_editable").length) {
 		// An editor is currently open -- save current changes as a lastEdit
 		sjs.saveLastEdit($(".cke_editable").eq(0));
 	}
+	var topMostVisibleSheetItem = null;
+	var relativeScrollTop = null;
+
+	$(".sheetItem").each(function( ){
+		if ( $('body').scrollTop() < $(this).offset().top + $(this).height() ) {
+			topMostVisibleSheetItem = $(this).attr('data-node');
+			relativeScrollTop = $(this).offset().top + $(this).height()-$('body').scrollTop();
+			return false;
+		}
+	});
+
 	if (sjs.can_edit || sjs.can_add) {
 		$("#addInterface").insertAfter($("#sources"));
+		var lastSelectedInterfaceButton = $(".addInterfaceButton.active"); //ensures that add interface remains on the same screen it was previously during a rebuild. So that text in progress can still be added....
 	}
+
+
 	buildSheet(data);
 	sjs.replayLastEdit();
+
+	if (topMostVisibleSheetItem == null) {
+		curTextLocation = $("#sourceButton").offset().top - 200
+	} else {
+		curTextLocation = $("[data-node='"+topMostVisibleSheetItem+"']").offset().top  + $("[data-node='"+topMostVisibleSheetItem+"']").height() - relativeScrollTop;
+	}
+
+	$("html, body").scrollTop(curTextLocation);
+
+
 	if (sjs.can_edit || sjs.can_add) {
 		$(".sheetItem").on("click", ".inlineAddButtonIcon", function(e) {
 			$("#addInterface").insertAfter($(this).parent().closest(".sheetItem"));
 			$(this).parent().closest(".sheetItem").hasClass("source") ? $("#connectionButton").css('display', 'inline-block') : $("#connectionButton").hide();
 		});
 	}
+
+	if (sjs.can_edit || sjs.can_add) {
+		$("[data-node='" + topMostVisibleSheetItem + "'] .inlineAddButtonIcon").click();
+		lastSelectedInterfaceButton.click();
+	}
+
+	if (data.options.highlightMode)    { $("#highlightToggle").trigger("click"); }
+	closeHighlighterTagWindow();
+	resetSplitHighlighterSegment();
+	resetHighlighterFilterTags();
+	resetHighlighterInteractivity();
+
+	sjs.changesPending = false;
 
 }
 
@@ -3286,6 +3696,41 @@ function exportToDrive() {
 	});
 }
 
+function fillEmptyHighlighterSegments() {
+		$( ".highlighter" ).each(function( index ) {
+			if ($(this).find(".en").html() == "") {
+				$(this).find(".en").html("<div class='highlighterSegment'>"+$(this).siblings('.text').find('.en').html().stripHtml()+"</div>")
+			}
+			if ($(this).find(".he").html() == "") {
+				$(this).find(".he").html("<div class='highlighterSegment'>"+$(this).siblings('.text').find('.he').html().stripHtml()+"</div>")
+			}
+
+		});
+}
+
+function toggleHighlighter() {
+	if ($("#sheet").hasClass("highlightMode")) {
+		$("#sheet").removeClass("highlightMode")
+		$("#highlightModeDisplay").hide();
+		$("#highlightMenu").css('display','none');
+		if ($("#sources").data('ui-sortable')) {
+			$("#sources").sortable("enable"); //disable dragging while in highlighter edit mode....
+		}
+	}
+	else {
+		$("#sheet").addClass("highlightMode")
+		$("#highlightModeDisplay").show();
+		$("#highlightMenu").css('display','inline-block');
+		if ($("#sources").data('ui-sortable')) {
+			$("#sources").sortable("disable"); //disable dragging while in highlighter edit mode....
+		}
+	}
+	if ($(".sheetItem").length >0) {
+		fillEmptyHighlighterSegments();
+		autoSave();
+		}
+}
+
 function showEmebed() {
 	$("#embedSheetModal").show().position({of: window})
 			.find("textarea").focus()
@@ -3316,7 +3761,7 @@ function deleteSheet() {
 
 // Regexes for identifying divine names with or without nikkud / trop
 // Currently ignores אֵל & צְבָאוֹת & שדי
-sjs.divineRE  = /([\s.,\u05BE;:'"\-]|^)([משהוכלב]?[\u0591-\u05C7]*)(י[\u0591-\u05C7]*ה[\u0591-\u05C7]*ו[\u0591-\u05C7]*ה[\u0591-\u05C7]*|יי|יקוק|ה\')(?=[\s.,;:'"\-]|$)/g;
+sjs.divineRE  = /([\s.,\u05BE;:'"\-]|^)([משהוכלב]?[\u0591-\u05C7]*)(י[\u0591-\u05C7]*ה[\u0591-\u05C7]*ו[\u0591-\u05C7]*ה[\u0591-\u05C7]*|יְיָ|יי|יקוק|ה\')(?=[\s.,;:'"\-]|$)/g;
 
 sjs.adoshemRE = /([\s.,\u05BE;:'"\-]|^)([משהוכלב]?[\u0591-\u05C7]*)(א[\u0591-\u05C7]*ד[\u0591-\u05C7]*נ[\u0591-\u05C7]*י[\u0591-\u05C7]*|אדושם)(?=[\s.,;:'"\-]|$)/g;
 
@@ -3418,6 +3863,7 @@ var afterAction = function() {
 		$("#save").show();
 		$("#fileControlMsg").hide();
 	}
+	resetHighlighterInteractivity();
 };
 
 // ------------------ Upload locally stored images to Imgur ------------------
@@ -3472,3 +3918,122 @@ var addmediaUploadImageToImgur = function(imageData) {
 };
 
 $("#addmediaFileSelector").change(addmediaChooseFile);
+
+
+function resetSplitHighlighterSegment() {
+	$(".sheetHighlighterTags").off();
+	$(".sheetHighlighterTags").on('click', '.splitHighlighterSegment', function() {
+		if ($(this).hasClass("active")) {
+			$(".splitHighlighterSegment").removeClass('active');
+			injectSelectionColor("#D2DCFF");
+		}
+		else {
+			$(".splitHighlighterSegment").removeClass('active');
+			$(this).addClass('active');
+			injectSelectionColor($(this).find('.colorSwatch.active').css('background-color'));
+		}
+	});
+	$(".splitHighlighterSegment").off();
+	$(".splitHighlighterSegment").on('click', '.editCheckToggle', function(e) {
+		e.stopPropagation();
+		var curTag = $(this).siblings('.tagName');
+		curTagName = curTag.text();
+		curTag.attr("contenteditable", "true");
+		curTag.focus();
+	});
+	$(".splitHighlighterSegment").on('focusout', '.tagName', function(e) {
+		$(this).attr("contenteditable", "false");
+		$(".highlighterSegment[data-tag='" + curTagName + "']").attr('data-tag', $(this).text() );
+		autoSave();
+	});
+}
+
+function injectSelectionColor(color) {
+	sel = window.getSelection();
+	sel.removeAllRanges();
+	$("#tempSelectOverride").remove();
+  var div = $("<div />", {
+    html: '&shy;<style id="tempSelectOverride">*::selection { background: '+color+'; }</style>'
+  }).appendTo("body");
+	setTimeout(function(){ sel.addRange(sjs.selection); }, 20);
+}
+
+function resetHighlighterInteractivity() {
+	if (sjs.is_owner) {
+
+		$(".highlighter .he, .highlighter .en").off();
+
+		$(".highlighter .he, .highlighter .en").on("mousedown", '.highlighterSegment', function() {
+			$(".highlighterSegment").removeClass("noSelect");
+			$(".highlighterSegment").not(this).addClass("noSelect");
+			closeHighlighterTagWindow();
+		});
+
+		$(".highlighter .he, .highlighter .en").on("mouseup", '.highlighterSegment', function(e) {
+			if ($(e.target).attr('data-tag') && !$(e.target).hasClass("noSelect") ) { //if clicking on a highlight that already is tagged, select whole highlight and open window.
+				var range = document.createRange();
+				range.selectNodeContents(e.currentTarget);
+				var sel = window.getSelection();
+				sel.removeAllRanges();
+				sel.addRange(range);
+				var curTagName = $(e.target).attr('data-tag');
+				$(".splitHighlighterSegment[data-tagname='" + curTagName  + "']").addClass('active');
+
+			}
+
+			if (window.getSelection().anchorOffset !== window.getSelection().focusOffset) { //check if there's any selection
+				sjs.selection = saveSelection();
+				$('.createNewHighlighterTag .colorSwatch').removeClass('active');
+				$('.createNewHighlighterTag .colorSwatch').eq($('.splitHighlighterSegment').length % 7).addClass('active'); //select the next color in the list
+				$("tagSelector").show();
+				$(".highlighterTagWindow").show().css({
+					"top": e.pageY,
+					"left": $(".highlighterTagWindow").width() + e.pageX < window.innerWidth ? e.pageX : window.innerWidth - $(".highlighterTagWindow").width() - 40
+				});
+				$(".createNewHighlighterTag .tagName").attr("contenteditable", "true");
+			}
+		});
+	}
+}
+
+function closeHighlighterTagWindow() {
+	$("#tempSelectOverride").remove();
+	$(".highlighterTagWindow").hide();
+	$(".splitHighlighterSegment").removeClass('active');
+}
+
+function resetHighlighterFilterTags() {
+	$(".highlighterFilterTags").off();
+	$(".highlighterFilterTags").on("click", "input[type='checkbox'][name='highlighterFilterTags']", function(e) {
+		if (!($(this)[0].checked)) {
+			$(".highlighterSegment[data-tag='" + $(this)[0].value + "']").hide();
+		}
+		else {
+			$(".highlighterSegment[data-tag='" + $(this)[0].value + "']").show();
+		}
+	});
+}
+
+ function saveSelection() {
+		if (window.getSelection) {
+				sel = window.getSelection();
+				if (sel.getRangeAt && sel.rangeCount) {
+						return sel.getRangeAt(0);
+				}
+		} else if (document.selection && document.selection.createRange) {
+				return document.selection.createRange();
+		}
+		return null;
+ }
+
+function restoreSelection(range) {
+		if (range) {
+				if (window.getSelection) {
+						sel = window.getSelection();
+						sel.removeAllRanges();
+						sel.addRange(range);
+				} else if (document.selection && range.select) {
+						range.select();
+				}
+		}
+}

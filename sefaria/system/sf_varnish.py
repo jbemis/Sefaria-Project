@@ -1,7 +1,7 @@
 import re
 from varnish import VarnishManager
 from sefaria.model import *
-from sefaria.local_settings import VARNISH_ADDR, VARNISH_SECRET, FRONT_END_URL
+from sefaria.local_settings import VARNISH_ADM_ADDR, VARNISH_FRNT_PORT, VARNISH_SECRET, FRONT_END_URL
 from sefaria.system.exceptions import InputError
 
 from urlparse import urlparse
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 with open (VARNISH_SECRET, "r") as sfile:
     secret=sfile.read().replace('\n', '')
-manager = VarnishManager([VARNISH_ADDR])
+manager = VarnishManager([VARNISH_ADM_ADDR])
 
 
 def invalidate_ref(oref, lang=None, version=None, purge=False):
@@ -58,12 +58,14 @@ def invalidate_ref(oref, lang=None, version=None, purge=False):
     manager.run("ban", 'obj.http.url ~ "/api/texts/{}"'.format(url_regex(oref)), secret=secret)
     manager.run("ban", 'obj.http.url ~ "/api/links/{}"'.format(url_regex(oref)), secret=secret)
 
+
 def invalidate_linked(oref):
     for linkref in {r.section_ref() for r in oref.linkset().refs_from(oref)}:
         invalidate_ref(linkref)
 
+
 def invalidate_counts(indx):
-    if isinstance(indx, Index) or isinstance(indx, CommentaryIndex):
+    if isinstance(indx, Index):
         oref = Ref(indx.title)
         url = oref.url()
     elif isinstance(indx, basestring):
@@ -74,13 +76,15 @@ def invalidate_counts(indx):
 
     purge_url("{}/api/preview/{}".format(FRONT_END_URL, url))
     purge_url("{}/api/counts/{}".format(FRONT_END_URL, url))
+    purge_url("{}/api/v2/index/{}?with_content_counts=1".format(FRONT_END_URL, url))
 
     # Assume this is unnecesary, given that the specific URLs will have been purged/banned by the save action
     # oref = Ref(indx.title)
     # invalidate_ref(oref)
 
+
 def invalidate_index(indx):
-    if isinstance(indx, Index) or isinstance(indx, CommentaryIndex):
+    if isinstance(indx, Index):
         try:
             oref = Ref(indx.title)
             url = oref.url()
@@ -96,6 +100,7 @@ def invalidate_index(indx):
     purge_url("{}/api/index/{}".format(FRONT_END_URL, url))
     purge_url("{}/api/v2/raw/index/{}".format(FRONT_END_URL, url))
     purge_url("{}/api/v2/index/{}".format(FRONT_END_URL, url))
+    purge_url("{}/api/v2/index/{}?with_content_counts=1".format(FRONT_END_URL, url))
 
 
 def invalidate_title(title):
@@ -106,23 +111,23 @@ def invalidate_title(title):
     manager.run("ban", 'obj.http.url ~ "/api/links/{}"'.format(title), secret=secret)
 
 
-#PyPi version of python-varnish has broken purge function.  We use this instead.
+# PyPi version of python-varnish has broken purge function.  We use this instead.
+# Derived from https://github.com/justquick/python-varnish/blob/master/varnish.py
 def purge_url(url):
     """
     Do an HTTP PURGE of the given asset.
     The URL is run through urlparse and must point to the varnish instance not the varnishadm
     """
     url = urlparse(url)
-    connection = HTTPConnection(url.hostname, url.port or 80)
+    connection = HTTPConnection(url.hostname, VARNISH_FRNT_PORT)
     path = url.path or '/'
     connection.request('PURGE', '%s?%s' % (path, url.query) if url.query else path, '',
-                       {'Host': '%s:%s' % (url.hostname, url.port) if url.port else url.hostname})
+                       {'Host': url.hostname})
     response = connection.getresponse()
     if response.status != 200:
-        logger.error(u'Purge of {}{} on host {}{} failed with status: {}'.format(path,
+        logger.error(u'Purge of {}{} on host {} failed with status: {}'.format(path,
                                                                                   u"?" + url.query if url.query else u'',
                                                                                   url.hostname,
-                                                                                  u":" + url.port if url.port else u'',
                                                                                   response.status))
     return response
 

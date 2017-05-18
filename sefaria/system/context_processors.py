@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+
 """
-Djagno Context Processors, for decorating all HTTP request with common data.
+Djagno Context Processors, for decorating all HTTP requests with common data.
 """
 import json
 from datetime import datetime
@@ -11,7 +13,7 @@ from sefaria.model import library
 from sefaria.model.user_profile import UserProfile
 from sefaria.utils import calendars
 from sefaria.utils.util import short_to_long_lang_code
-from sefaria.utils.hebrew import hebrew_parasha_name
+from sefaria.utils.hebrew import hebrew_parasha_name, get_simple_term_mapping
 from reader.views import render_react_component
 
 
@@ -37,7 +39,11 @@ def titles_json(request):
 
 
 def toc(request):
-    return {"toc": library.get_toc(), "toc_json": library.get_toc_json()}
+    return {"toc": library.get_toc(), "toc_json": library.get_toc_json(), "search_toc_json": library.get_search_filter_toc_json()}
+
+
+def terms(request):
+    return {"terms_json": json.dumps(get_simple_term_mapping())}
 
 
 def embed_page(request):
@@ -45,19 +51,6 @@ def embed_page(request):
 
 
 def language_settings(request):
-
-    # CONTENT
-    # Pull language setting from cookie or Accept-Lanugage header or default to english
-    content = request.COOKIES.get('contentLang') or request.LANGUAGE_CODE or 'english'
-    # URL parameter trumps cookie
-    #content = request.GET.get("lang", content)
-    """content = "bilingual" if content in ("bi", "he-en", "en-he") else content
-    content = 'hebrew' if content in ('he', 'he-il') else content
-    content = "english" if content in ('en') else content"""
-    content = short_to_long_lang_code(content)
-    # Don't allow languages other than what we currently handle
-    content = 'english' if content not in ('english', 'hebrew', 'bilingual') else content
-
     # INTERFACE
     interface = None
     if request.user.is_authenticated():
@@ -70,12 +63,26 @@ def language_settings(request):
         # Don't allow languages other than what we currently handle
         interface = 'english' if interface not in ('english', 'hebrew') else interface
 
+    # CONTENT
+    default_content_lang = 'hebrew' if interface == 'hebrew' else 'bilingual'
+    # Pull language setting from cookie or Accept-Lanugage header or default to english
+    content = request.COOKIES.get('contentLang') or default_content_lang
+    content = short_to_long_lang_code(content)
+    # Don't allow languages other than what we currently handle
+    content = default_content_lang if content not in ('english', 'hebrew', 'bilingual') else content
+    # Note: URL parameters may override values set her, handled in reader view.
+
     return {"contentLang": content, "interfaceLang": interface}
 
 
-def notifications(request):
+def user_and_notifications(request):
     if not request.user.is_authenticated():
-        return {}
+        import urlparse
+        recent = json.loads(urlparse.unquote(request.COOKIES.get("recentlyViewed", '[]')))
+        recent = [] if len(recent) and isinstance(recent[0], dict) else recent # ignore old style cookies
+        return {
+            "recentlyViewed": recent
+        }
     
     profile = UserProfile(id=request.user.id)
     notifications = profile.recent_notifications()
@@ -85,13 +92,17 @@ def notifications(request):
         interrupting_message_json = json.dumps({"name": interrupting_message, "html": render_to_string("messages/%s.html" % interrupting_message)})
     else:
         interrupting_message_json = "null"
+
     return {
-                "notifications": notifications, 
-                "notifications_json": notifications_json,
-                "notifications_html": notifications.to_HTML(),
-                "notifications_count": profile.unread_notification_count(),
-                "interrupting_message_json": interrupting_message_json,
-            }
+        "notifications": notifications,
+        "notifications_json": notifications_json,
+        "notifications_html": notifications.to_HTML(),
+        "notifications_count": profile.unread_notification_count(),
+        "recentlyViewed": profile.recentlyViewed,
+        "interrupting_message_json": interrupting_message_json,
+        "partner_group": profile.partner_group,
+        "partner_role": profile.partner_role,
+    }
 
 
 LOGGED_OUT_HEADER = None
@@ -107,6 +118,8 @@ def header_html(request):
     if USE_NODE:
         LOGGED_OUT_HEADER = LOGGED_OUT_HEADER or render_react_component("ReaderApp", {"headerMode": True, "loggedIn": False})
         LOGGED_IN_HEADER = LOGGED_IN_HEADER or render_react_component("ReaderApp", {"headerMode": True, "loggedIn": True})
+        LOGGED_OUT_HEADER = "" if "s2Loading" in LOGGED_OUT_HEADER else LOGGED_OUT_HEADER
+        LOGGED_IN_HEADER = "" if "s2Loading" in LOGGED_IN_HEADER else LOGGED_IN_HEADER
     else:
         LOGGED_OUT_HEADER = ""
         LOGGED_IN_HEADER = ""
@@ -115,6 +128,7 @@ def header_html(request):
         "logged_out_header": LOGGED_OUT_HEADER,
     }
 
+
 FOOTER = None
 def footer_html(request):
     if request.path == "/data.js":
@@ -122,6 +136,7 @@ def footer_html(request):
     global FOOTER
     if USE_NODE:
         FOOTER = FOOTER or render_react_component("Footer", {})
+        FOOTER = "" if "s2Loading" in FOOTER else FOOTER
     else:
         FOOTER = ""
     return {
